@@ -54,6 +54,26 @@ body.nocursor{cursor:none}
 #night{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;opacity:0;pointer-events:none;
   transition:opacity 3s;z-index:7}
 
+/* Saat & hava durumu ara ekranı */
+.ara .shade{position:absolute;top:0;left:0;right:0;bottom:0;
+  background:radial-gradient(ellipse at center,rgba(0,0,0,.55) 0%,rgba(0,0,0,.8) 100%)}
+.ara .wrap{position:absolute;top:50%;left:50%;-webkit-transform:translate(-50%,-50%);transform:translate(-50%,-50%);
+  text-align:center;width:90%}
+.ara .big{font-size:26vmin;font-weight:200;line-height:1;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.ara .big .col{-webkit-animation:blink 2s steps(1) infinite;animation:blink 2s steps(1) infinite}
+@-webkit-keyframes blink{50%{opacity:.25}}
+@keyframes blink{50%{opacity:.25}}
+.ara .date{font-size:5.6vmin;font-weight:400;margin-top:2.2vmin;opacity:.95;letter-spacing:.03em}
+.ara .date b{font-weight:600}
+.ara .sep{width:16vmin;height:2px;background:rgba(255,255,255,.35);margin:4.5vmin auto}
+.ara .wx{display:inline-block;text-align:left;white-space:nowrap}
+.ara .wx svg{width:15vmin;height:15vmin;vertical-align:middle;margin-right:2.5vmin}
+.ara .wx .t{display:inline-block;vertical-align:middle}
+.ara .wx .deg{font-size:13vmin;font-weight:300;line-height:1}
+.ara .wx .desc{font-size:3.6vmin;opacity:.9;margin-top:.8vmin}
+.ara .wx .mm{font-size:3vmin;opacity:.7;margin-top:.4vmin}
+.ara .city{font-size:3vmin;opacity:.6;margin-top:3vmin;letter-spacing:.15em;text-transform:uppercase}
+
 #bar{position:fixed;left:0;right:0;bottom:0;padding:22px 0 26px;text-align:center;z-index:8;
   background:linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,0));opacity:0;pointer-events:none;transition:opacity .4s}
 #bar.show{opacity:1;pointer-events:auto}
@@ -160,6 +180,17 @@ input[type=checkbox]{width:24px;height:24px}
         <option value="1">Her 1 dk</option><option value="2">Her 2 dk</option><option value="5">Her 5 dk</option>
         <option value="10">Her 10 dk</option><option value="30">Her 30 dk</option>
       </select></div>
+    <div class="row"><label for="oAra">Saat &amp; hava durumu ekranı</label>
+      <select id="oAra">
+        <option value="0">Kapalı</option><option value="5">Her 5 görselde</option>
+        <option value="8">Her 8 görselde</option><option value="12">Her 12 görselde</option>
+        <option value="20">Her 20 görselde</option>
+      </select></div>
+    <div class="row"><label for="oAraSure">Bu ekranın süresi</label>
+      <select id="oAraSure">
+        <option value="8">8 sn</option><option value="10">10 sn</option><option value="15">15 sn</option>
+        <option value="20">20 sn</option><option value="30">30 sn</option>
+      </select></div>
     <div class="row"><label for="oBilgi">Albüm adı ve tarih</label><input type="checkbox" id="oBilgi"></div>
     <div class="row"><label for="oSaat">Saat göster</label><input type="checkbox" id="oSaat"></div>
     <div class="row"><label for="oBulanik">Bulanık arka plan (Tam sığdır modunda)</label><input type="checkbox" id="oBulanik"></div>
@@ -182,11 +213,11 @@ input[type=checkbox]{width:24px;height:24px}
 (function () {
   'use strict';
 
-  var VERSION = 'v1.1';
+  var VERSION = 'v1.2';
   var KEY = 'cerceve_ayar';
   var DEF = {
     api: '', sure: 10, yerlesim: 'akilli', gecis: 'fade', sira: 'karisik', video: true, ses: false,
-    yenile: 5, bilgi: true, saat: true, bulanik: true, geceBas: '', geceBit: ''
+    yenile: 5, araEkran: 8, araSure: 10, sehir: 'İstanbul', lat: 41.01, lon: 28.98, bilgi: true, saat: true, bulanik: true, geceBas: '', geceBit: ''
   };
 
   function $(id) { return document.getElementById(id); }
@@ -312,10 +343,113 @@ input[type=checkbox]{width:24px;height:24px}
     $('cnt').textContent = f + ' fotoğraf' + (v ? ' · ' + v + ' video' : '');
   }
 
+  // ---------- Hava durumu (Open-Meteo, anahtarsız) ----------
+  var wx = null, wxAt = 0;
+  var GUNLER = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+  function fetchWeather() {
+    if (Date.now() - wxAt < 20 * 60000 && wx) return;
+    var u = 'https://api.open-meteo.com/v1/forecast?latitude=' + cfg.lat + '&longitude=' + cfg.lon +
+      '&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min' +
+      '&timezone=auto&forecast_days=1';
+    fetch(u).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d || !d.current) return;
+      wx = {
+        t: Math.round(d.current.temperature_2m), code: d.current.weather_code, day: d.current.is_day === 1,
+        max: d.daily ? Math.round(d.daily.temperature_2m_max[0]) : null,
+        min: d.daily ? Math.round(d.daily.temperature_2m_min[0]) : null
+      };
+      wxAt = Date.now();
+    }).catch(function () {});
+  }
+  function wxKind(c) {
+    if (c === 0) return 'clear';
+    if (c === 1 || c === 2) return 'partly';
+    if (c === 3) return 'cloud';
+    if (c === 45 || c === 48) return 'fog';
+    if (c >= 51 && c <= 67) return 'rain';
+    if (c >= 80 && c <= 82) return 'rain';
+    if ((c >= 71 && c <= 77) || c === 85 || c === 86) return 'snow';
+    if (c >= 95) return 'storm';
+    return 'cloud';
+  }
+  function wxDesc(c) {
+    var m = { 0: 'Açık', 1: 'Az bulutlu', 2: 'Parçalı bulutlu', 3: 'Kapalı', 45: 'Sisli', 48: 'Kırağılı sis',
+      51: 'Hafif çisenti', 53: 'Çisenti', 55: 'Yoğun çisenti', 56: 'Dondurucu çisenti', 57: 'Dondurucu çisenti',
+      61: 'Hafif yağmurlu', 63: 'Yağmurlu', 65: 'Kuvvetli yağmur', 66: 'Dondurucu yağmur', 67: 'Dondurucu yağmur',
+      71: 'Hafif kar', 73: 'Karlı', 75: 'Yoğun kar', 77: 'Kar taneleri', 80: 'Hafif sağanak', 81: 'Sağanak',
+      82: 'Şiddetli sağanak', 85: 'Kar sağanağı', 86: 'Yoğun kar sağanağı', 95: 'Gök gürültülü', 96: 'Dolu ihtimali', 99: 'Dolulu fırtına' };
+    return m[c] || '';
+  }
+  function wxIcon(kind, day) {
+    var Y = '#FFC94A', C = '#E8EDF3', C2 = '#B9C3CF', B = '#7FC4FF';
+    var sun = '<circle cx="32" cy="32" r="12" fill="' + Y + '"/>' +
+      '<g stroke="' + Y + '" stroke-width="4" stroke-linecap="round">' +
+      '<line x1="32" y1="5" x2="32" y2="12"/><line x1="32" y1="52" x2="32" y2="59"/><line x1="5" y1="32" x2="12" y2="32"/>' +
+      '<line x1="52" y1="32" x2="59" y2="32"/><line x1="13" y1="13" x2="18" y2="18"/><line x1="46" y1="46" x2="51" y2="51"/>' +
+      '<line x1="13" y1="51" x2="18" y2="46"/><line x1="46" y1="18" x2="51" y2="13"/></g>';
+    var moon = '<path d="M40 8a24 24 0 1 0 16 38A20 20 0 0 1 40 8z" fill="#F4E3A1"/>';
+    var cloud = function (f, dy) { dy = dy || 0; return '<path transform="translate(0 ' + dy + ')" d="M18 50h30a11 11 0 0 0 0-22 15 15 0 0 0-28-3A10 10 0 0 0 18 50z" fill="' + f + '"/>'; };
+    var small = function (inner) { return '<g transform="translate(-6 -8) scale(.62)">' + inner + '</g>'; };
+    var body;
+    if (kind === 'clear') body = day ? sun : moon;
+    else if (kind === 'partly') body = small(day ? sun : moon) + cloud(C, 4);
+    else if (kind === 'cloud') body = cloud(C2, -4) + cloud(C, 4);
+    else if (kind === 'fog') body = cloud(C2, -8) + '<g stroke="' + C + '" stroke-width="4" stroke-linecap="round"><line x1="12" y1="50" x2="52" y2="50"/><line x1="18" y1="58" x2="46" y2="58"/></g>';
+    else if (kind === 'rain') body = cloud(C, -8) + '<g stroke="' + B + '" stroke-width="4" stroke-linecap="round"><line x1="22" y1="48" x2="18" y2="58"/><line x1="33" y1="48" x2="29" y2="58"/><line x1="44" y1="48" x2="40" y2="58"/></g>';
+    else if (kind === 'snow') body = cloud(C, -8) + '<g fill="#fff"><circle cx="21" cy="52" r="3"/><circle cx="32" cy="57" r="3"/><circle cx="43" cy="52" r="3"/></g>';
+    else body = cloud(C2, -8) + '<path d="M34 44l-8 10h7l-4 9 11-13h-7l4-6z" fill="' + Y + '"/>';
+    return '<svg viewBox="0 0 64 64">' + body + '</svg>';
+  }
+
+  // ---------- Saat & hava durumu ara ekranı ----------
+  var sayac = 0, onAra = false;
+  function araHtml() {
+    var d = new Date();
+    var html = '<div class="wrap">' +
+      '<div class="big"><span class="hh">' + pad(d.getHours()) + '</span><span class="col">:</span><span class="mm2">' + pad(d.getMinutes()) + '</span></div>' +
+      '<div class="date">' + pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear() + ' <b>' + GUNLER[d.getDay()] + '</b></div>';
+    if (wx) {
+      html += '<div class="sep"></div><div class="wx">' + wxIcon(wxKind(wx.code), wx.day) +
+        '<div class="t"><div class="deg">' + wx.t + '°</div><div class="desc">' + wxDesc(wx.code) + '</div>' +
+        (wx.max !== null ? '<div class="mm">En yüksek ' + wx.max + '° · En düşük ' + wx.min + '°</div>' : '') +
+        '</div></div><div class="city">' + cfg.sehir + '</div>';
+    }
+    return html + '</div>';
+  }
+  function showAra() {
+    clearTimeout(timer); timer = null;
+    ++seq; onAra = true;
+    var slide = document.createElement('div');
+    slide.className = 'slide ara';
+    if (current && current.tur === 'image') addBg(slide, current);
+    var sh = document.createElement('div'); sh.className = 'shade'; slide.appendChild(sh);
+    var box = document.createElement('div'); box.innerHTML = araHtml(); slide.appendChild(box.firstChild);
+    stage.appendChild(slide);
+    $('info').style.opacity = 0; $('clock').style.display = 'none';
+    var olds = [];
+    for (var i = 0; i < stage.children.length; i++) if (stage.children[i] !== slide) olds.push(stage.children[i]);
+    void slide.offsetWidth;
+    slide.className += ' on';
+    setTimeout(function () { olds.forEach(disposeSlide); }, 1450);
+    schedule(next, cfg.araSure * 1000);
+    fetchWeather();
+  }
+  function refreshAra() {
+    var el = stage.querySelector('.slide.ara.on');
+    if (!el) return;
+    var d = new Date();
+    var h = el.querySelector('.hh'), m = el.querySelector('.mm2');
+    if (h) h.textContent = pad(d.getHours());
+    if (m) m.textContent = pad(d.getMinutes());
+  }
+
   // ---------- Gösterim ----------
   function next() {
     if (!items.length) return;
     if (night) { clearTimeout(timer); timer = null; return; }
+    if (cfg.araEkran > 0 && !onAra && sayac >= cfg.araEkran) { sayac = 0; showAra(); return; }
+    if (cfg.araEkran > 0 && sayac === cfg.araEkran - 2) fetchWeather();   // ara ekrandan önce hava verisini tazele
+    sayac++;
     if (!queue.length) buildQueue();
     var it = queue.shift();
     if (current && current !== it) { hist.push(current); if (hist.length > 40) hist.shift(); }
@@ -379,14 +513,16 @@ input[type=checkbox]{width:24px;height:24px}
       if (dims[q.id] !== undefined) { if (!known && mismatch(dims[q.id])) known = q; }
       else if (unknown.length < 3) unknown.push(q);
     }
-    if (!known && !unknown.length) {               // sırada aday yoksa tüm listeden bilinen bir eş al
+    function fromPool() {                          // sırada eş yoksa tüm listeden daha önce görülmüş bir eş al
       var pool = items.filter(function (q) { return q.tur === 'image' && q.id !== it.id && dims[q.id] !== undefined && mismatch(dims[q.id]); });
-      if (pool.length) known = pool[Math.floor(Math.random() * pool.length)];
+      if (!pool.length) return cb(null);
+      var q = pool[Math.floor(Math.random() * pool.length)];
+      loadImg(q, function (im) { cb(im ? q : null, im); });
     }
     if (known) return loadImg(known, function (im) { cb(im ? known : null, im); });
     (function tryNext() {
       var q = unknown.shift();
-      if (!q) return cb(null);
+      if (!q) return fromPool();
       loadImg(q, function (im) { if (im && mismatch(dims[q.id])) cb(q, im); else tryNext(); });
     })();
   }
@@ -394,7 +530,7 @@ input[type=checkbox]{width:24px;height:24px}
   function show(it) {
     clearTimeout(timer); timer = null;
     var my = ++seq, done = false;
-    current = it;
+    current = it; onAra = false;
 
     var slide = document.createElement('div');
     slide.className = 'slide';
@@ -524,7 +660,8 @@ input[type=checkbox]{width:24px;height:24px}
   function tick() {
     var d = new Date();
     var c = $('clock');
-    c.style.display = cfg.saat ? 'block' : 'none';
+    c.style.display = cfg.saat && !onAra ? 'block' : 'none';
+    refreshAra();
     c.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes());
     var n = isNight();
     if (n !== night) {
@@ -628,7 +765,7 @@ input[type=checkbox]{width:24px;height:24px}
       var l = scrLand();
       if (l === lastLand) return;
       lastLand = l;
-      if (current && current.tur === 'image' && !night) show(current);
+      if (current && current.tur === 'image' && !night && !onAra) show(current);
     }, 500);
   });
 
@@ -646,7 +783,7 @@ input[type=checkbox]{width:24px;height:24px}
   }
   function openSettings() {
     hideBar();
-    setSel('oSure', cfg.sure); setSel('oYerlesim', cfg.yerlesim); setSel('oGecis', cfg.gecis); setSel('oSira', cfg.sira); setSel('oYenile', cfg.yenile);
+    setSel('oSure', cfg.sure); setSel('oYerlesim', cfg.yerlesim); setSel('oGecis', cfg.gecis); setSel('oSira', cfg.sira); setSel('oYenile', cfg.yenile); setSel('oAra', cfg.araEkran); setSel('oAraSure', cfg.araSure);
     $('oVideo').checked = cfg.video; $('oSes').checked = cfg.ses; $('oBilgi').checked = cfg.bilgi;
     $('oSaat').checked = cfg.saat; $('oBulanik').checked = cfg.bulanik;
     $('oGeceBas').value = cfg.geceBas; $('oGeceBit').value = cfg.geceBit; $('oApi').value = cfg.api;
@@ -660,7 +797,8 @@ input[type=checkbox]{width:24px;height:24px}
   $('oCancel').addEventListener('click', closeSettings);
   $('oSave').addEventListener('click', function () {
     var before = { api: cfg.api, video: cfg.video, sira: cfg.sira, yerlesim: cfg.yerlesim, bulanik: cfg.bulanik };
-    cfg.sure = +$('oSure').value; cfg.yerlesim = $('oYerlesim').value; cfg.gecis = $('oGecis').value; cfg.sira = $('oSira').value;
+    cfg.sure = +$('oSure').value; cfg.yerlesim = $('oYerlesim').value;
+    cfg.araEkran = +$('oAra').value; cfg.araSure = +$('oAraSure').value; cfg.gecis = $('oGecis').value; cfg.sira = $('oSira').value;
     cfg.yenile = +$('oYenile').value; cfg.video = $('oVideo').checked; cfg.ses = $('oSes').checked;
     cfg.bilgi = $('oBilgi').checked; cfg.saat = $('oSaat').checked; cfg.bulanik = $('oBulanik').checked;
     cfg.geceBas = $('oGeceBas').value; cfg.geceBit = $('oGeceBit').value;
@@ -671,7 +809,7 @@ input[type=checkbox]{width:24px;height:24px}
       items = []; queue = []; hist = []; clearStage(); showMsg('Yükleniyor…'); fetchList();
     } else {
       if (before.sira !== cfg.sira) queue = [];
-      if ((before.yerlesim !== cfg.yerlesim || before.bulanik !== cfg.bulanik) && current) show(current);
+      if ((before.yerlesim !== cfg.yerlesim || before.bulanik !== cfg.bulanik) && current && !onAra) show(current);
       else if (!paused && current && current.tur === 'image') schedule(next, cfg.sure * 1000);
     }
     var v = stage.querySelector('.slide.on video'); if (v) v.muted = !cfg.ses;
@@ -696,12 +834,14 @@ input[type=checkbox]{width:24px;height:24px}
 
   // ---------- Başlat ----------
   tick();
-  setInterval(tick, 15000);
+  setInterval(tick, 5000);
+  fetchWeather();
+  setInterval(fetchWeather, 30 * 60000);
   if (cfg.api) start();
   else { $('setup').className = 'panel show'; document.body.className = ''; }
 
   // test için dışa aç
-  window.__cerceve = { cfg: cfg, state: function () { return { items: items.length, queue: queue.length, current: current && current.id, paused: paused, night: night }; }, next: next, prev: prev };
+  window.__cerceve = { cfg: cfg, state: function () { return { items: items.length, queue: queue.length, current: current && current.id, paused: paused, night: night }; }, next: next, prev: prev, ara: showAra };
 })();
 </script>
 </body>
