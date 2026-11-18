@@ -8,6 +8,8 @@
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap" rel="stylesheet">
 <title>Çerçeve</title>
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;color:#fff;
@@ -91,6 +93,21 @@ body.nocursor{cursor:none}
 .hv .day .x{font-size:3.2vmin}
 .hv .day .x span{opacity:.6}
 .hv .day .p{font-size:2.6vmin;color:#9fd2ff;margin-top:.6vmin;min-height:3vmin}
+
+/* Not panosu */
+.nt .head{font-size:3.4vmin;opacity:.8;letter-spacing:.14em;text-transform:uppercase;margin-bottom:3vmin}
+.nt .notes{white-space:normal}
+.nt .note{display:inline-block;vertical-align:middle;text-align:left;color:#2b2416;margin:1.6vmin;padding:4vmin 4vmin 3vmin;
+  border-radius:1.2vmin;box-shadow:0 1.5vmin 4vmin rgba(0,0,0,.45);word-wrap:break-word}
+.nt .note .txt{font-family:'Caveat','Segoe Print','Bradley Hand',cursive;line-height:1.12}
+.nt .note .by{font-size:2.5vmin;opacity:.65;margin-top:2vmin}
+.nt .n1 .note{width:66vmin}.nt .n1 .txt{font-size:9vmin}
+.nt .n2 .note{width:42vmin}.nt .n2 .txt{font-size:6vmin}
+.nt .n3 .note{width:29vmin}.nt .n3 .txt{font-size:4.6vmin}
+.nt .note.sari{background:#FFE98A}.nt .note.pembe{background:#FFC2D4}.nt .note.mavi{background:#BFE3FF}.nt .note.yesil{background:#C8F0B8}
+.nt.yeni .note{-webkit-animation:pop .8s cubic-bezier(.2,1.4,.4,1) both;animation:pop .8s cubic-bezier(.2,1.4,.4,1) both}
+@-webkit-keyframes pop{from{-webkit-transform:scale(.6);opacity:0}}
+@keyframes pop{from{transform:scale(.6) rotate(0);opacity:0}}
 
 #bar{position:fixed;left:0;right:0;bottom:0;padding:22px 0 26px;text-align:center;z-index:8;
   background:linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,0));opacity:0;pointer-events:none;transition:opacity .4s}
@@ -206,6 +223,7 @@ input[type=checkbox]{width:24px;height:24px}
       </select></div>
     <div class="row"><label for="oEkSaat">· Saat ekranı</label><input type="checkbox" id="oEkSaat"></div>
     <div class="row"><label for="oEkHava">· Hava durumu (5 gün)</label><input type="checkbox" id="oEkHava"></div>
+    <div class="row"><label for="oEkNot">· Not panosu</label><input type="checkbox" id="oEkNot"></div>
     <div class="row"><label for="oAraSure">Bilgi ekranı süresi</label>
       <select id="oAraSure">
         <option value="8">8 sn</option><option value="10">10 sn</option><option value="15">15 sn</option>
@@ -233,11 +251,11 @@ input[type=checkbox]{width:24px;height:24px}
 (function () {
   'use strict';
 
-  var VERSION = 'v1.3';
+  var VERSION = 'v1.4';
   var KEY = 'cerceve_ayar';
   var DEF = {
     api: '', sure: 10, yerlesim: 'akilli', gecis: 'fade', sira: 'karisik', video: true, ses: false,
-    yenile: 5, araEkran: 8, araSure: 10, ekSaat: true, ekHava: true, sehir: 'İstanbul', lat: 41.01, lon: 28.98, bilgi: true, saat: true, bulanik: true, geceBas: '', geceBit: ''
+    yenile: 5, araEkran: 8, araSure: 10, ekSaat: true, ekHava: true, ekNot: true, sehir: 'İstanbul', lat: 41.01, lon: 28.98, bilgi: true, saat: true, bulanik: true, geceBas: '', geceBit: ''
   };
 
   function $(id) { return document.getElementById(id); }
@@ -471,22 +489,62 @@ input[type=checkbox]{width:24px;height:24px}
     return h + '</div>' + umbHtml() + '</div>';
   }
 
+  // ---------- Not panosu ----------
+  var notlar = [], gorulenNot = {}, notIlk = true, bekleyenNot = false;
+  function apiCall(q) { return cfg.api + (cfg.api.indexOf('?') > -1 ? '&' : '?') + q + '&_=' + Date.now(); }
+  function fetchNotes() {
+    if (!cfg.api || !cfg.ekNot) return;
+    fetch(apiCall('islem=notlar'), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) return;
+        var yeni = false;
+        (d.notlar || []).forEach(function (n) {
+          if (!gorulenNot[n.id]) { gorulenNot[n.id] = 1; if (!notIlk) yeni = true; }
+        });
+        notlar = d.notlar || [];
+        notIlk = false;
+        if (yeni) { bekleyenNot = true; toast('💌 Yeni not geldi'); }
+      }).catch(function () {});
+  }
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function notZaman(iso) {
+    var d = new Date(iso), n = new Date();
+    var hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    if (d.toDateString() === n.toDateString()) return 'bugün ' + hm;
+    var y = new Date(n); y.setDate(n.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return 'dün ' + hm;
+    return fmtDate(iso);
+  }
+  function notHtml(yeni) {
+    var list = notlar.slice(0, 3), rot = [-2.2, 1.6, -1.2];
+    var h = '<div class="wrap nt' + (yeni ? ' yeni' : '') + '"><div class="head">' + (yeni ? '💌 Yeni not' : '📌 Not panosu') + '</div>' +
+      '<div class="notes n' + list.length + '">';
+    list.forEach(function (n, i) {
+      h += '<div class="note ' + esc(n.renk || 'sari') + '" style="-webkit-transform:rotate(' + rot[i] + 'deg);transform:rotate(' + rot[i] + 'deg)">' +
+        '<div class="txt">' + esc(n.metin) + '</div>' +
+        '<div class="by">— ' + esc(n.yazan) + ' · ' + notZaman(n.tarih) + '</div></div>';
+    });
+    return h + '</div></div>';
+  }
+
   // Sıradaki bilgi ekranını seç (açık olanlar arasında sırayla döner)
   var ekIdx = 0;
   function aktifEkranlar() {
     var a = [];
     if (cfg.ekSaat) a.push('saat');
     if (cfg.ekHava && wx && wx.days && wx.days.length) a.push('hava');
+    if (cfg.ekNot && notlar.length) a.push('not');
     return a;
   }
   function siradakiEkran() {
     var a = aktifEkranlar();
     if (!a.length) return false;
     var k = a[ekIdx % a.length]; ekIdx++;
-    showAra(k === 'hava' ? havaHtml() : araHtml());
+    showAra(k === 'hava' ? havaHtml() : k === 'not' ? notHtml(false) : araHtml());
     return true;
   }
-  function showAra(html) {
+  function showAra(html, sureSn) {
     clearTimeout(timer); timer = null;
     ++seq; onAra = true;
     var slide = document.createElement('div');
@@ -501,7 +559,7 @@ input[type=checkbox]{width:24px;height:24px}
     void slide.offsetWidth;
     slide.className += ' on';
     setTimeout(function () { olds.forEach(disposeSlide); }, 1450);
-    schedule(next, cfg.araSure * 1000);
+    schedule(next, (sureSn || cfg.araSure) * 1000);
     fetchWeather();
   }
   function refreshAra() {
@@ -517,6 +575,9 @@ input[type=checkbox]{width:24px;height:24px}
   function next() {
     if (!items.length) return;
     if (night) { clearTimeout(timer); timer = null; return; }
+    if (bekleyenNot && cfg.ekNot && notlar.length) {   // yeni not sırasını beklemez
+      bekleyenNot = false; showAra(notHtml(true), Math.max(cfg.araSure, 15)); return;
+    }
     if (cfg.araEkran > 0 && !onAra && sayac >= cfg.araEkran) { sayac = 0; if (siradakiEkran()) return; }
     if (cfg.araEkran > 0 && sayac === cfg.araEkran - 2) fetchWeather();   // ara ekrandan önce hava verisini tazele
     sayac++;
@@ -854,7 +915,7 @@ input[type=checkbox]{width:24px;height:24px}
   function openSettings() {
     hideBar();
     setSel('oSure', cfg.sure); setSel('oYerlesim', cfg.yerlesim); setSel('oGecis', cfg.gecis); setSel('oSira', cfg.sira); setSel('oYenile', cfg.yenile); setSel('oAra', cfg.araEkran); setSel('oAraSure', cfg.araSure);
-    $('oEkSaat').checked = cfg.ekSaat; $('oEkHava').checked = cfg.ekHava;
+    $('oEkSaat').checked = cfg.ekSaat; $('oEkHava').checked = cfg.ekHava; $('oEkNot').checked = cfg.ekNot;
     $('oVideo').checked = cfg.video; $('oSes').checked = cfg.ses; $('oBilgi').checked = cfg.bilgi;
     $('oSaat').checked = cfg.saat; $('oBulanik').checked = cfg.bulanik;
     $('oGeceBas').value = cfg.geceBas; $('oGeceBit').value = cfg.geceBit; $('oApi').value = cfg.api;
@@ -870,7 +931,8 @@ input[type=checkbox]{width:24px;height:24px}
     var before = { api: cfg.api, video: cfg.video, sira: cfg.sira, yerlesim: cfg.yerlesim, bulanik: cfg.bulanik };
     cfg.sure = +$('oSure').value; cfg.yerlesim = $('oYerlesim').value;
     cfg.araEkran = +$('oAra').value; cfg.araSure = +$('oAraSure').value;
-    cfg.ekSaat = $('oEkSaat').checked; cfg.ekHava = $('oEkHava').checked; cfg.gecis = $('oGecis').value; cfg.sira = $('oSira').value;
+    cfg.ekSaat = $('oEkSaat').checked; cfg.ekHava = $('oEkHava').checked; cfg.ekNot = $('oEkNot').checked;
+    if (cfg.ekNot) fetchNotes(); cfg.gecis = $('oGecis').value; cfg.sira = $('oSira').value;
     cfg.yenile = +$('oYenile').value; cfg.video = $('oVideo').checked; cfg.ses = $('oSes').checked;
     cfg.bilgi = $('oBilgi').checked; cfg.saat = $('oSaat').checked; cfg.bulanik = $('oBulanik').checked;
     cfg.geceBas = $('oGeceBas').value; cfg.geceBit = $('oGeceBit').value;
@@ -902,6 +964,7 @@ input[type=checkbox]{width:24px;height:24px}
   function start() {
     showMsg('Yükleniyor…');
     fetchList();
+    fetchNotes();
   }
 
   // ---------- Başlat ----------
@@ -909,11 +972,13 @@ input[type=checkbox]{width:24px;height:24px}
   setInterval(tick, 5000);
   fetchWeather();
   setInterval(fetchWeather, 30 * 60000);
+  fetchNotes();
+  setInterval(fetchNotes, 60000);
   if (cfg.api) start();
   else { $('setup').className = 'panel show'; document.body.className = ''; }
 
   // test için dışa aç
-  window.__cerceve = { cfg: cfg, state: function () { return { items: items.length, queue: queue.length, current: current && current.id, paused: paused, night: night }; }, next: next, prev: prev, ara: showAra, ekran: siradakiEkran };
+  window.__cerceve = { cfg: cfg, state: function () { return { items: items.length, queue: queue.length, current: current && current.id, paused: paused, night: night }; }, next: next, prev: prev, ara: showAra, ekran: siradakiEkran, notlar: fetchNotes };
 })();
 </script>
 </body>

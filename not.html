@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Not Bırak">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#111318">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<title>Not Bırak · Çerçeve</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:#111318;color:#fff;font-family:-apple-system,Roboto,"Segoe UI",Helvetica,Arial,sans-serif;
+  -webkit-tap-highlight-color:transparent}
+.app{max-width:520px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 18px calc(30px + env(safe-area-inset-bottom))}
+h1{font-size:26px;margin:6px 0 2px;font-weight:700}
+.sub{opacity:.55;font-size:14px;margin-bottom:18px}
+.card{background:#1b1e24;border-radius:18px;padding:18px;margin-bottom:16px}
+label{display:block;font-size:13px;opacity:.65;margin:0 0 7px;text-transform:uppercase;letter-spacing:.06em}
+input,select,textarea{width:100%;background:#262a31;border:1px solid #363b44;color:#fff;border-radius:12px;
+  padding:13px 14px;font-size:17px;font-family:inherit;-webkit-appearance:none;appearance:none}
+textarea{min-height:120px;resize:vertical;font-family:'Caveat',cursive;font-size:28px;line-height:1.2;color:#2b2416;border:0}
+textarea.sari{background:#FFE98A}textarea.pembe{background:#FFC2D4}textarea.mavi{background:#BFE3FF}textarea.yesil{background:#C8F0B8}
+textarea::placeholder{color:rgba(43,36,22,.45)}
+.row{display:flex;gap:10px;margin-top:14px;align-items:center}
+.emo{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.emo button{background:#262a31;border:0;border-radius:10px;font-size:22px;width:44px;height:44px;padding:0}
+.colors{display:flex;gap:10px}
+.colors button{width:38px;height:38px;border-radius:50%;border:3px solid transparent;padding:0}
+.colors button.on{border-color:#fff}
+.c-sari{background:#FFE98A}.c-pembe{background:#FFC2D4}.c-mavi{background:#BFE3FF}.c-yesil{background:#C8F0B8}
+.cnt{font-size:12px;opacity:.5;text-align:right;margin-top:6px}
+.btn{width:100%;border:0;border-radius:14px;padding:16px;font-size:18px;font-weight:700;margin-top:16px}
+.btn.p{background:#e8c26a;color:#1b1406}
+.btn.s{background:#262a31;color:#fff;font-weight:500;font-size:15px;padding:13px}
+.btn:disabled{opacity:.5}
+.list .n{position:relative;border-radius:12px;padding:12px 44px 10px 14px;margin-bottom:10px;color:#2b2416}
+.list .n .t{font-family:'Caveat',cursive;font-size:24px;line-height:1.15;word-wrap:break-word}
+.list .n .m{font-size:12px;opacity:.65;margin-top:4px}
+.list .n .x{position:absolute;right:6px;top:6px;width:32px;height:32px;border:0;border-radius:50%;background:rgba(0,0,0,.12);
+  font-size:16px;color:#2b2416;padding:0}
+.n.sari{background:#FFE98A}.n.pembe{background:#FFC2D4}.n.mavi{background:#BFE3FF}.n.yesil{background:#C8F0B8}
+.empty{opacity:.5;font-size:14px;text-align:center;padding:8px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#2e7d4f;
+  padding:12px 18px;border-radius:12px;font-size:15px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.err{background:#b23b3b}
+.err{color:#ff8a80;font-size:14px;margin-top:8px;min-height:18px}
+.hidden{display:none}
+.foot{text-align:center;font-size:12px;opacity:.4;margin-top:6px}
+.link{background:none;border:0;color:#9fc7ff;font-size:14px;padding:6px;text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Kurulum -->
+  <div id="setup" class="hidden">
+    <h1>Not Bırak 💌</h1>
+    <div class="sub">Çerçeveye bağlanın (bir kez)</div>
+    <div class="card">
+      <label for="sApi">Apps Script adresi</label>
+      <input id="sApi" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+      <div class="row"><div style="flex:1"><label for="sPin">PIN</label><input id="sPin" inputmode="numeric" maxlength="8" placeholder="••••"></div>
+        <div style="flex:1.4"><label for="sAd">Adınız</label><input id="sAd" maxlength="30" placeholder="ör. İlker"></div></div>
+      <div class="err" id="sErr"></div>
+      <button class="btn p" id="sGo">Bağlan</button>
+    </div>
+  </div>
+
+  <!-- Ana ekran -->
+  <div id="main" class="hidden">
+    <h1>Not Bırak 💌</h1>
+    <div class="sub" id="hello"></div>
+
+    <div class="card">
+      <textarea id="txt" class="sari" maxlength="280" placeholder="Çerçeveye bir not yaz…"></textarea>
+      <div class="cnt"><span id="cnt">0</span>/280</div>
+      <div class="emo" id="emo"></div>
+      <div class="row" style="margin-top:16px">
+        <div class="colors" id="colors">
+          <button class="c-sari on" data-c="sari" aria-label="Sarı"></button>
+          <button class="c-pembe" data-c="pembe" aria-label="Pembe"></button>
+          <button class="c-mavi" data-c="mavi" aria-label="Mavi"></button>
+          <button class="c-yesil" data-c="yesil" aria-label="Yeşil"></button>
+        </div>
+        <select id="sure" style="flex:1">
+          <option value="3">3 saat</option>
+          <option value="gun">Gün sonuna kadar</option>
+          <option value="24" selected>1 gün</option>
+          <option value="72">3 gün</option>
+          <option value="168">1 hafta</option>
+          <option value="0">Süresiz</option>
+        </select>
+      </div>
+      <button class="btn p" id="send">Çerçeveye gönder</button>
+    </div>
+
+    <div class="card">
+      <label>Çerçevedeki notlar</label>
+      <div class="list" id="list"><div class="empty">Yükleniyor…</div></div>
+    </div>
+
+    <button class="btn s" id="share">Bu sayfayı eşinle paylaş</button>
+    <div class="foot"><button class="link" id="reset">Bağlantı ayarları</button> · v1.0</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+  var KEY = 'cerceve_not';
+  function $(id) { return document.getElementById(id); }
+
+  // ---- ayarlar: localStorage + #hash (iOS'ta localStorage silinirse diye) ----
+  function load() {
+    var c = { api: '', pin: '', ad: '' };
+    try { var s = JSON.parse(localStorage.getItem(KEY) || '{}'); for (var k in s) c[k] = s[k]; } catch (e) {}
+    location.hash.replace(/^#/, '').split('&').forEach(function (p) {
+      var i = p.indexOf('='); if (i < 0) return;
+      var k = decodeURIComponent(p.slice(0, i)), v = decodeURIComponent(p.slice(i + 1));
+      if (k === 'api' || k === 'pin' || k === 'ad') c[k] = v;
+    });
+    return c;
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {}
+    try { history.replaceState(null, '', location.pathname + '#' + hashOf(true)); } catch (e) {}
+  }
+  function hashOf(withName) {
+    var h = 'api=' + encodeURIComponent(cfg.api) + '&pin=' + encodeURIComponent(cfg.pin);
+    if (withName && cfg.ad) h += '&ad=' + encodeURIComponent(cfg.ad);
+    return h;
+  }
+  var cfg = load();
+
+  function call(params) {
+    var q = [];
+    for (var k in params) q.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
+    var url = cfg.api + (cfg.api.indexOf('?') > -1 ? '&' : '?') + q.join('&') + '&_=' + Date.now();
+    return fetch(url, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d || !d.ok) throw new Error((d && d.error) || 'Bağlantı hatası');
+      return d;
+    });
+  }
+
+  var tT;
+  function toast(t, err) {
+    var el = $('toast'); el.textContent = t; el.className = 'toast' + (err ? ' err' : ''); el.style.opacity = 1;
+    clearTimeout(tT); tT = setTimeout(function () { el.style.opacity = 0; }, 2600);
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function when(iso) {
+    var d = new Date(iso), n = new Date();
+    var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    if (d.toDateString() === n.toDateString()) return 'bugün ' + hm;
+    var y = new Date(n); y.setDate(n.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return 'dün ' + hm;
+    return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) + ' ' + hm;
+  }
+  function kalan(iso) {
+    if (!iso) return 'süresiz';
+    var ms = new Date(iso) - new Date();
+    if (ms <= 0) return 'süresi doldu';
+    var s = Math.round(ms / 3600000);
+    return s < 1 ? '1 saatten az kaldı' : s < 24 ? s + ' saat kaldı' : Math.round(s / 24) + ' gün kaldı';
+  }
+
+  // ---- kurulum ----
+  function showSetup() {
+    $('main').className = 'hidden'; $('setup').className = '';
+    $('sApi').value = cfg.api; $('sPin').value = cfg.pin; $('sAd').value = cfg.ad;
+  }
+  $('sGo').addEventListener('click', function () {
+    var api = $('sApi').value.trim(), pin = $('sPin').value.trim(), ad = $('sAd').value.trim();
+    if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(api)) { $('sErr').textContent = 'Adres https://script.google.com/... ile başlamalı.'; return; }
+    if (!pin) { $('sErr').textContent = 'PIN girin.'; return; }
+    if (!ad) { $('sErr').textContent = 'Adınızı yazın (notun altında görünecek).'; return; }
+    $('sErr').textContent = 'Kontrol ediliyor…'; $('sGo').disabled = true;
+    var old = { api: cfg.api, pin: cfg.pin };
+    cfg.api = api; cfg.pin = pin;
+    call({ islem: 'pin', pin: pin }).then(function () {
+      cfg.ad = ad; save(); $('sErr').textContent = ''; showMain();
+    }).catch(function (e) {
+      cfg.api = old.api; cfg.pin = old.pin;
+      $('sErr').textContent = e.message === 'PIN hatalı' ? 'PIN hatalı.' : 'Bağlanılamadı: ' + e.message;
+    }).then(function () { $('sGo').disabled = false; });
+  });
+
+  // ---- ana ekran ----
+  var renk = 'sari';
+  var EMO = ['❤️', '😘', '😂', '🥰', '☕', '🍝', '🛒', '🎉', '🙏', '🌙', '☀️', '💪'];
+  EMO.forEach(function (e) {
+    var b = document.createElement('button'); b.textContent = e; b.type = 'button';
+    b.addEventListener('click', function () {
+      var t = $('txt'), s = t.selectionStart || t.value.length;
+      t.value = (t.value.slice(0, s) + e + t.value.slice(s)).slice(0, 280); upd(); t.focus();
+    });
+    $('emo').appendChild(b);
+  });
+  [].forEach.call($('colors').children, function (b) {
+    b.addEventListener('click', function () {
+      [].forEach.call($('colors').children, function (x) { x.classList.remove('on'); });
+      b.classList.add('on'); renk = b.getAttribute('data-c'); $('txt').className = renk;
+    });
+  });
+  function upd() { $('cnt').textContent = $('txt').value.length; }
+  $('txt').addEventListener('input', upd);
+
+  function showMain() {
+    $('setup').className = 'hidden'; $('main').className = '';
+    $('hello').textContent = 'Merhaba ' + cfg.ad + ', notun birkaç dakika içinde çerçevede belirir.';
+    refresh();
+  }
+  function refresh() {
+    call({ islem: 'notlar' }).then(function (d) {
+      var l = $('list'); l.innerHTML = '';
+      if (!d.notlar.length) { l.innerHTML = '<div class="empty">Şu an çerçevede not yok.</div>'; return; }
+      d.notlar.forEach(function (n) {
+        var el = document.createElement('div');
+        el.className = 'n ' + (n.renk || 'sari');
+        el.innerHTML = '<div class="t">' + esc(n.metin) + '</div><div class="m">— ' + esc(n.yazan) + ' · ' + when(n.tarih) + ' · ' + kalan(n.bitis) + '</div>' +
+          '<button class="x" aria-label="Sil">✕</button>';
+        el.querySelector('.x').addEventListener('click', function () {
+          if (!confirm('Bu not çerçeveden kaldırılsın mı?')) return;
+          call({ islem: 'notSil', pin: cfg.pin, id: n.id }).then(function () { toast('Not kaldırıldı'); refresh(); })
+            .catch(function (e) { toast(e.message, true); });
+        });
+        l.appendChild(el);
+      });
+    }).catch(function (e) { $('list').innerHTML = '<div class="empty">Notlar alınamadı: ' + esc(e.message) + '</div>'; });
+  }
+
+  $('send').addEventListener('click', function () {
+    var metin = $('txt').value.trim();
+    if (!metin) { toast('Önce bir not yazın', true); return; }
+    $('send').disabled = true; $('send').textContent = 'Gönderiliyor…';
+    call({ islem: 'notEkle', pin: cfg.pin, yazan: cfg.ad, metin: metin, renk: renk, sure: $('sure').value })
+      .then(function () { $('txt').value = ''; upd(); toast('Not gönderildi 💌'); refresh(); })
+      .catch(function (e) { toast(e.message, true); })
+      .then(function () { $('send').disabled = false; $('send').textContent = 'Çerçeveye gönder'; });
+  });
+
+  $('share').addEventListener('click', function () {
+    var url = location.origin + location.pathname + '#' + hashOf(false);
+    var text = 'Çerçeveye not bırakmak için bu bağlantıyı aç, adını yaz, sonra Ana Ekrana Ekle 💌';
+    if (navigator.share) { navigator.share({ title: 'Not Bırak', text: text, url: url }).catch(function () {}); }
+    else if (navigator.clipboard) { navigator.clipboard.writeText(url).then(function () { toast('Bağlantı kopyalandı'); }); }
+    else prompt('Bağlantıyı kopyalayın:', url);
+  });
+  $('reset').addEventListener('click', showSetup);
+
+  if (cfg.api && cfg.pin && cfg.ad) { save(); showMain(); } else showSetup();
+})();
+</script>
+</body>
+</html>
