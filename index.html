@@ -74,6 +74,24 @@ body.nocursor{cursor:none}
 .ara .wx .mm{font-size:3vmin;opacity:.7;margin-top:.4vmin}
 .ara .city{font-size:3vmin;opacity:.6;margin-top:3vmin;letter-spacing:.15em;text-transform:uppercase}
 
+.ara .umb{display:inline-block;margin-top:3.4vmin;background:rgba(127,196,255,.18);border:1px solid rgba(127,196,255,.45);
+  padding:1.2vmin 2.6vmin;border-radius:4vmin;font-size:3vmin}
+.hv .now{white-space:nowrap}
+.hv .now svg{width:20vmin;height:20vmin;vertical-align:middle;margin-right:3vmin}
+.hv .now .t{display:inline-block;vertical-align:middle;text-align:left}
+.hv .now .deg{font-size:16vmin;font-weight:300;line-height:1}
+.hv .now .desc{font-size:4vmin;margin-top:1vmin}
+.hv .now .mm{font-size:3.1vmin;opacity:.75;margin-top:.6vmin}
+.hv .head{font-size:3.2vmin;opacity:.65;letter-spacing:.15em;text-transform:uppercase;margin-bottom:2.5vmin}
+.hv .days{margin-top:4.5vmin;white-space:nowrap}
+.hv .day{display:inline-block;width:15vmin;margin:0 1vmin;padding:2vmin 0;border-radius:2.4vmin;background:rgba(255,255,255,.09);vertical-align:top}
+.hv .day.today{background:rgba(255,255,255,.18)}
+.hv .day .n{font-size:3vmin;font-weight:600}
+.hv .day svg{width:9vmin;height:9vmin;margin:1vmin 0}
+.hv .day .x{font-size:3.2vmin}
+.hv .day .x span{opacity:.6}
+.hv .day .p{font-size:2.6vmin;color:#9fd2ff;margin-top:.6vmin;min-height:3vmin}
+
 #bar{position:fixed;left:0;right:0;bottom:0;padding:22px 0 26px;text-align:center;z-index:8;
   background:linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,0));opacity:0;pointer-events:none;transition:opacity .4s}
 #bar.show{opacity:1;pointer-events:auto}
@@ -153,7 +171,7 @@ input[type=checkbox]{width:24px;height:24px}
       <select id="oSure">
         <option value="5">5 sn</option><option value="8">8 sn</option><option value="10">10 sn</option>
         <option value="15">15 sn</option><option value="20">20 sn</option><option value="30">30 sn</option>
-        <option value="60">1 dk</option><option value="90">90 sn</option><option value="100">100 sn</option><option value="120">2 dk</option><option value="300">5 dk</option>
+        <option value="60">1 dk</option><option value="120">2 dk</option><option value="300">5 dk</option>
       </select></div>
     <div class="row"><label for="oYerlesim">Yerleşim</label>
       <select id="oYerlesim">
@@ -180,13 +198,15 @@ input[type=checkbox]{width:24px;height:24px}
         <option value="1">Her 1 dk</option><option value="2">Her 2 dk</option><option value="5">Her 5 dk</option>
         <option value="10">Her 10 dk</option><option value="30">Her 30 dk</option>
       </select></div>
-    <div class="row"><label for="oAra">Saat &amp; hava durumu ekranı</label>
+    <div class="row"><label for="oAra">Bilgi ekranları sıklığı</label>
       <select id="oAra">
         <option value="0">Kapalı</option><option value="5">Her 5 görselde</option>
         <option value="8">Her 8 görselde</option><option value="12">Her 12 görselde</option>
         <option value="20">Her 20 görselde</option>
       </select></div>
-    <div class="row"><label for="oAraSure">Bu ekranın süresi</label>
+    <div class="row"><label for="oEkSaat">· Saat ekranı</label><input type="checkbox" id="oEkSaat"></div>
+    <div class="row"><label for="oEkHava">· Hava durumu (5 gün)</label><input type="checkbox" id="oEkHava"></div>
+    <div class="row"><label for="oAraSure">Bilgi ekranı süresi</label>
       <select id="oAraSure">
         <option value="8">8 sn</option><option value="10">10 sn</option><option value="15">15 sn</option>
         <option value="20">20 sn</option><option value="30">30 sn</option>
@@ -213,11 +233,11 @@ input[type=checkbox]{width:24px;height:24px}
 (function () {
   'use strict';
 
-  var VERSION = 'v1.2';
+  var VERSION = 'v1.3';
   var KEY = 'cerceve_ayar';
   var DEF = {
     api: '', sure: 10, yerlesim: 'akilli', gecis: 'fade', sira: 'karisik', video: true, ses: false,
-    yenile: 5, araEkran: 8, araSure: 10, sehir: 'İstanbul', lat: 41.01, lon: 28.98, bilgi: true, saat: true, bulanik: true, geceBas: '', geceBit: ''
+    yenile: 5, araEkran: 8, araSure: 10, ekSaat: true, ekHava: true, sehir: 'İstanbul', lat: 41.01, lon: 28.98, bilgi: true, saat: true, bulanik: true, geceBas: '', geceBit: ''
   };
 
   function $(id) { return document.getElementById(id); }
@@ -349,15 +369,27 @@ input[type=checkbox]{width:24px;height:24px}
   function fetchWeather() {
     if (Date.now() - wxAt < 20 * 60000 && wx) return;
     var u = 'https://api.open-meteo.com/v1/forecast?latitude=' + cfg.lat + '&longitude=' + cfg.lon +
-      '&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min' +
-      '&timezone=auto&forecast_days=1';
+      '&current=temperature_2m,weather_code,is_day' +
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
+      '&timezone=auto&forecast_days=5';
     fetch(u).then(function (r) { return r.json(); }).then(function (d) {
       if (!d || !d.current) return;
       wx = {
         t: Math.round(d.current.temperature_2m), code: d.current.weather_code, day: d.current.is_day === 1,
         max: d.daily ? Math.round(d.daily.temperature_2m_max[0]) : null,
-        min: d.daily ? Math.round(d.daily.temperature_2m_min[0]) : null
+        min: d.daily ? Math.round(d.daily.temperature_2m_min[0]) : null,
+        days: []
       };
+      if (d.daily && d.daily.time) {
+        for (var i = 0; i < d.daily.time.length; i++) {
+          var pp = d.daily.precipitation_probability_max;
+          wx.days.push({
+            date: d.daily.time[i], code: d.daily.weather_code[i],
+            max: Math.round(d.daily.temperature_2m_max[i]), min: Math.round(d.daily.temperature_2m_min[i]),
+            pop: pp && pp[i] != null ? pp[i] : null
+          });
+        }
+      }
       wxAt = Date.now();
     }).catch(function () {});
   }
@@ -412,18 +444,56 @@ input[type=checkbox]{width:24px;height:24px}
       html += '<div class="sep"></div><div class="wx">' + wxIcon(wxKind(wx.code), wx.day) +
         '<div class="t"><div class="deg">' + wx.t + '°</div><div class="desc">' + wxDesc(wx.code) + '</div>' +
         (wx.max !== null ? '<div class="mm">En yüksek ' + wx.max + '° · En düşük ' + wx.min + '°</div>' : '') +
-        '</div></div><div class="city">' + cfg.sehir + '</div>';
+        '</div></div><div class="city">' + cfg.sehir + '</div>' + umbHtml();
     }
     return html + '</div>';
   }
-  function showAra() {
+  function umbHtml() {
+    var t = wx && wx.days && wx.days[0];
+    if (!t || t.pop === null || t.pop < 50) return '';
+    return '<div class="umb">☔ Bugün yağış ihtimali %' + t.pop + ' · şemsiyenizi almayı unutmayın</div>';
+  }
+  var KISA = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+  function havaHtml() {
+    var h = '<div class="wrap hv"><div class="head">' + cfg.sehir + ' · Hava durumu</div>' +
+      '<div class="now">' + wxIcon(wxKind(wx.code), wx.day) +
+      '<div class="t"><div class="deg">' + wx.t + '°</div><div class="desc">' + wxDesc(wx.code) + '</div>' +
+      (wx.max !== null ? '<div class="mm">En yüksek ' + wx.max + '° · En düşük ' + wx.min + '°</div>' : '') +
+      '</div></div><div class="days">';
+    wx.days.forEach(function (d, i) {
+      var p = d.date.split('-'), dt = new Date(+p[0], +p[1] - 1, +p[2]);
+      var n = i === 0 ? 'Bugün' : i === 1 ? 'Yarın' : KISA[dt.getDay()];
+      h += '<div class="day' + (i === 0 ? ' today' : '') + '"><div class="n">' + n + '</div>' +
+        wxIcon(wxKind(d.code), true) +
+        '<div class="x">' + d.max + '° <span>' + d.min + '°</span></div>' +
+        '<div class="p">' + (d.pop !== null && d.pop >= 20 ? '💧 %' + d.pop : '') + '</div></div>';
+    });
+    return h + '</div>' + umbHtml() + '</div>';
+  }
+
+  // Sıradaki bilgi ekranını seç (açık olanlar arasında sırayla döner)
+  var ekIdx = 0;
+  function aktifEkranlar() {
+    var a = [];
+    if (cfg.ekSaat) a.push('saat');
+    if (cfg.ekHava && wx && wx.days && wx.days.length) a.push('hava');
+    return a;
+  }
+  function siradakiEkran() {
+    var a = aktifEkranlar();
+    if (!a.length) return false;
+    var k = a[ekIdx % a.length]; ekIdx++;
+    showAra(k === 'hava' ? havaHtml() : araHtml());
+    return true;
+  }
+  function showAra(html) {
     clearTimeout(timer); timer = null;
     ++seq; onAra = true;
     var slide = document.createElement('div');
     slide.className = 'slide ara';
     if (current && current.tur === 'image') addBg(slide, current);
     var sh = document.createElement('div'); sh.className = 'shade'; slide.appendChild(sh);
-    var box = document.createElement('div'); box.innerHTML = araHtml(); slide.appendChild(box.firstChild);
+    var box = document.createElement('div'); box.innerHTML = html || araHtml(); slide.appendChild(box.firstChild);
     stage.appendChild(slide);
     $('info').style.opacity = 0; $('clock').style.display = 'none';
     var olds = [];
@@ -447,7 +517,7 @@ input[type=checkbox]{width:24px;height:24px}
   function next() {
     if (!items.length) return;
     if (night) { clearTimeout(timer); timer = null; return; }
-    if (cfg.araEkran > 0 && !onAra && sayac >= cfg.araEkran) { sayac = 0; showAra(); return; }
+    if (cfg.araEkran > 0 && !onAra && sayac >= cfg.araEkran) { sayac = 0; if (siradakiEkran()) return; }
     if (cfg.araEkran > 0 && sayac === cfg.araEkran - 2) fetchWeather();   // ara ekrandan önce hava verisini tazele
     sayac++;
     if (!queue.length) buildQueue();
@@ -784,6 +854,7 @@ input[type=checkbox]{width:24px;height:24px}
   function openSettings() {
     hideBar();
     setSel('oSure', cfg.sure); setSel('oYerlesim', cfg.yerlesim); setSel('oGecis', cfg.gecis); setSel('oSira', cfg.sira); setSel('oYenile', cfg.yenile); setSel('oAra', cfg.araEkran); setSel('oAraSure', cfg.araSure);
+    $('oEkSaat').checked = cfg.ekSaat; $('oEkHava').checked = cfg.ekHava;
     $('oVideo').checked = cfg.video; $('oSes').checked = cfg.ses; $('oBilgi').checked = cfg.bilgi;
     $('oSaat').checked = cfg.saat; $('oBulanik').checked = cfg.bulanik;
     $('oGeceBas').value = cfg.geceBas; $('oGeceBit').value = cfg.geceBit; $('oApi').value = cfg.api;
@@ -798,7 +869,8 @@ input[type=checkbox]{width:24px;height:24px}
   $('oSave').addEventListener('click', function () {
     var before = { api: cfg.api, video: cfg.video, sira: cfg.sira, yerlesim: cfg.yerlesim, bulanik: cfg.bulanik };
     cfg.sure = +$('oSure').value; cfg.yerlesim = $('oYerlesim').value;
-    cfg.araEkran = +$('oAra').value; cfg.araSure = +$('oAraSure').value; cfg.gecis = $('oGecis').value; cfg.sira = $('oSira').value;
+    cfg.araEkran = +$('oAra').value; cfg.araSure = +$('oAraSure').value;
+    cfg.ekSaat = $('oEkSaat').checked; cfg.ekHava = $('oEkHava').checked; cfg.gecis = $('oGecis').value; cfg.sira = $('oSira').value;
     cfg.yenile = +$('oYenile').value; cfg.video = $('oVideo').checked; cfg.ses = $('oSes').checked;
     cfg.bilgi = $('oBilgi').checked; cfg.saat = $('oSaat').checked; cfg.bulanik = $('oBulanik').checked;
     cfg.geceBas = $('oGeceBas').value; cfg.geceBit = $('oGeceBit').value;
@@ -841,7 +913,7 @@ input[type=checkbox]{width:24px;height:24px}
   else { $('setup').className = 'panel show'; document.body.className = ''; }
 
   // test için dışa aç
-  window.__cerceve = { cfg: cfg, state: function () { return { items: items.length, queue: queue.length, current: current && current.id, paused: paused, night: night }; }, next: next, prev: prev, ara: showAra };
+  window.__cerceve = { cfg: cfg, state: function () { return { items: items.length, queue: queue.length, current: current && current.id, paused: paused, night: night }; }, next: next, prev: prev, ara: showAra, ekran: siradakiEkran };
 })();
 </script>
 </body>
