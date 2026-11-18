@@ -124,6 +124,33 @@ body.nocursor{cursor:none}
 .kats label{display:inline-block;margin:4px 10px 4px 0;font-size:14px;white-space:nowrap}
 .kats input{width:18px;height:18px;vertical-align:middle}
 
+/* Spor */
+.ara .sp{width:92%}
+.sp .head{font-size:3.4vmin;opacity:.8;letter-spacing:.14em;text-transform:uppercase;margin-bottom:2.4vmin}
+.sp .grid{display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;-webkit-justify-content:center;justify-content:center}
+.sp .tk{width:44%;margin:1.1vmin;box-sizing:border-box;background:rgba(255,255,255,.08);border-radius:2.2vmin;padding:2.2vmin 2.6vmin;text-align:left}
+@media (orientation:portrait){.sp .tk{width:94%}}
+.sp .tt{font-size:3vmin;font-weight:700;letter-spacing:.04em}
+.sp .tt span{font-weight:400;opacity:.6}
+.sp .row2{margin-top:1.4vmin;font-size:3.1vmin;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp .row2 small{font-size:2.3vmin;opacity:.6;margin-left:1vmin}
+.ara .gbm{display:inline-block;width:3.6vmin;height:3.6vmin;line-height:3.6vmin;text-align:center;border-radius:.8vmin;font-size:2.3vmin;
+  font-weight:800;color:#111;margin-right:1.2vmin;vertical-align:.2vmin}
+.g-G{background:#6fdc8c}.g-B{background:#c9ced6}.g-M{background:#ff8b8b}
+.sp .nx{opacity:.92}
+.sp .hd{font-size:2.5vmin;opacity:.65;margin-top:1.2vmin;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mg .tag{display:inline-block;font-size:3.2vmin;font-weight:800;letter-spacing:.2em;padding:1vmin 3vmin;border-radius:4vmin;background:#e8c26a;color:#1b1406}
+.mg .tag.live{background:#ff5d5d;color:#fff}
+.mg .tag.fin{background:rgba(255,255,255,.2);color:#fff}
+.mg .m{margin-top:3.5vmin}
+.mg .ik{font-size:11vmin;line-height:1}
+.mg .vs{font-size:6.6vmin;font-weight:600;margin-top:1.5vmin}
+.mg .sc{font-size:13vmin;font-weight:300;margin-top:1vmin;letter-spacing:.05em}
+.mg .info2{font-size:3.3vmin;opacity:.75;margin-top:1.2vmin}
+.mg .cd{font-size:5vmin;margin-top:2.4vmin;color:#ffe08a}
+.mg .m + .m{margin-top:5vmin;padding-top:4vmin;border-top:1px solid rgba(255,255,255,.15)}
+.mg.two .ik{font-size:7vmin}.mg.two .vs{font-size:4.8vmin}.mg.two .sc{font-size:8vmin}.mg.two .cd{font-size:3.8vmin}
+
 #bar{position:fixed;left:0;right:0;bottom:0;padding:22px 0 26px;text-align:center;z-index:8;
   background:linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,0));opacity:0;pointer-events:none;transition:opacity .4s}
 #bar.show{opacity:1;pointer-events:auto}
@@ -247,6 +274,13 @@ input[type=checkbox]{width:24px;height:24px}
       <label><input type="checkbox" value="kultur"> Kültür-Sanat</label>
       <label><input type="checkbox" value="gezi"> Gezi</label>
     </div>
+    <div class="row"><label for="oEkSpor">· Spor (maç günü modu dahil)</label><input type="checkbox" id="oEkSpor"></div>
+    <div class="full kats" id="oTakims"><label style="display:block;margin-bottom:4px">Takımlar</label>
+      <label><input type="checkbox" value="bjk_futbol"> Beşiktaş Futbol</label>
+      <label><input type="checkbox" value="bjk_basket"> Beşiktaş Basketbol</label>
+      <label><input type="checkbox" value="vakifbank"> VakıfBank</label>
+      <label><input type="checkbox" value="milli"> Milli Takım</label>
+    </div>
     <div class="row"><label for="oAraSure">Bilgi ekranı süresi</label>
       <select id="oAraSure">
         <option value="8">8 sn</option><option value="10">10 sn</option><option value="15">15 sn</option>
@@ -274,11 +308,11 @@ input[type=checkbox]{width:24px;height:24px}
 (function () {
   'use strict';
 
-  var VERSION = 'v1.5';
+  var VERSION = 'v1.6.1';
   var KEY = 'cerceve_ayar';
   var DEF = {
     api: '', sure: 10, yerlesim: 'akilli', gecis: 'fade', sira: 'karisik', video: true, ses: false,
-    yenile: 5, araEkran: 8, araSure: 10, ekSaat: true, ekHava: true, ekNot: true, ekHaber: true, haberKat: 'spor,bilim,teknoloji,kultur', sehir: 'İstanbul', lat: 41.01, lon: 28.98, bilgi: true, saat: true, bulanik: true, geceBas: '', geceBit: ''
+    yenile: 5, araEkran: 8, araSure: 10, ekSaat: true, ekHava: true, ekNot: true, ekHaber: true, ekSpor: true, sporTakim: 'bjk_futbol,bjk_basket,vakifbank,milli', haberKat: 'spor,bilim,teknoloji,kultur', sehir: 'İstanbul', lat: 41.01, lon: 28.98, bilgi: true, saat: true, bulanik: true, geceBas: '', geceBit: ''
   };
 
   function $(id) { return document.getElementById(id); }
@@ -581,6 +615,97 @@ input[type=checkbox]{width:24px;height:24px}
     return h + '</div>';
   }
 
+  // ---------- Spor ----------
+  var takimlar = [];
+  var AYLAR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+  function fetchSpor() {
+    if (!cfg.api || !cfg.ekSpor) return;
+    fetch(apiCall('islem=spor'), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (d && d.ok && d.takimlar) takimlar = d.takimlar; })
+      .catch(function () {});
+  }
+  function seciliTakimlar() {
+    return takimlar.filter(function (t) { return (',' + cfg.sporTakim + ',').indexOf(',' + t.id + ',') > -1; });
+  }
+  function macTarih(iso) {
+    var d = new Date(iso), n = new Date();
+    var hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    var y = new Date(n); y.setDate(n.getDate() + 1);
+    if (d.toDateString() === n.toDateString()) return 'Bugün ' + hm;
+    if (d.toDateString() === y.toDateString()) return 'Yarın ' + hm;
+    return KISA[d.getDay()] + ' ' + d.getDate() + ' ' + AYLAR[d.getMonth()] + ' ' + hm;
+  }
+  function gbm(m) {
+    if (!m || m.evSkor === null || m.depSkor === null) return '';
+    var biz = m.evde ? m.evSkor : m.depSkor, onlar = m.evde ? m.depSkor : m.evSkor;
+    return biz > onlar ? 'G' : biz === onlar ? 'B' : 'M';
+  }
+  function geriSayim(iso) {
+    var dk = Math.round((new Date(iso).getTime() - Date.now()) / 60000);
+    if (dk <= 0) return 'Başlamak üzere';
+    var s = Math.floor(dk / 60), m = dk % 60;
+    return (s ? s + ' saat ' : '') + m + ' dk kaldı';
+  }
+  // Bugün maçı olanlar: başlamamış/oynanan (sonraki) veya bugün bitmiş (son)
+  function bugunMaclar() {
+    var bugun = new Date().toDateString(), now = Date.now(), out = [];
+    seciliTakimlar().forEach(function (t) {
+      var n = t.sonraki, l = t.son;
+      if (n && n.tarih && new Date(n.tarih).toDateString() === bugun && now < new Date(n.tarih).getTime() + 150 * 60000) {
+        out.push({ t: t, m: n, durum: now >= new Date(n.tarih).getTime() ? 'canli' : 'once' });
+      } else if (l && l.tarih && l.evSkor !== null && new Date(l.tarih).toDateString() === bugun) {
+        out.push({ t: t, m: l, durum: 'bitti' });
+      }
+    });
+    return out.slice(0, 2);
+  }
+  function sporHtml() {
+    var h = '<div class="wrap sp"><div class="head">🏆 Takımlarımız</div><div class="grid">';
+    seciliTakimlar().forEach(function (t) {
+      h += '<div class="tk"><div class="tt">' + t.ikon + ' ' + esc(t.ad).toLocaleUpperCase('tr-TR') + ' <span>· ' + esc(t.brans) + '</span></div>';
+      if (t.son && t.son.evSkor !== null) {
+        var r = gbm(t.son);
+        h += '<div class="row2"><span class="gbm g-' + r + '">' + r + '</span>' + esc(t.son.ev) + ' <b>' + t.son.evSkor + ' – ' + t.son.depSkor + '</b> ' + esc(t.son.dep) +
+          '<small>' + (t.son.tarih ? new Date(t.son.tarih).getDate() + ' ' + AYLAR[new Date(t.son.tarih).getMonth()] : '') +
+          (t.son.lig === 'haberden' ? ' · haberden' : '') + '</small></div>';
+      }
+      if (t.sonraki) {
+        var rakip = t.sonraki.evde ? t.sonraki.dep : t.sonraki.ev;
+        h += '<div class="row2 nx">▸ ' + macTarih(t.sonraki.tarih) + ' · ' + esc(rakip) + ' <small>' + (t.sonraki.evde ? 'iç saha' : 'deplasman') + (t.sonraki.lig ? ' · ' + esc(t.sonraki.lig) : '') + '</small></div>';
+      }
+      var hn = t.haberler || [];
+      var adet = (t.son || t.sonraki) ? 1 : 2;
+      for (var i = 0; i < Math.min(adet, hn.length); i++) h += '<div class="hd">📰 ' + esc(hn[i].baslik) + '</div>';
+      h += '</div>';
+    });
+    return h + '</div></div>';
+  }
+  function macHtml() {
+    var list = bugunMaclar();
+    var h = '<div class="wrap mg' + (list.length > 1 ? ' two' : '') + '">';
+    list.forEach(function (x) {
+      var m = x.m;
+      h += '<div class="m">';
+      if (x.durum === 'once') h += '<div class="tag">BUGÜN MAÇ VAR</div>';
+      else if (x.durum === 'canli') h += '<div class="tag live">● MAÇ OYNANIYOR</div>';
+      else h += '<div class="tag fin">MAÇ SONUCU</div>';
+      h += '<div class="ik">' + x.t.ikon + '</div>';
+      if (x.durum === 'bitti') {
+        var r = gbm(m);
+        h += '<div class="vs">' + esc(m.ev) + ' – ' + esc(m.dep) + '</div><div class="sc">' + m.evSkor + ' – ' + m.depSkor + '</div>' +
+          '<div class="info2"><span class="gbm g-' + r + '">' + r + '</span>' + esc(x.t.brans) + (m.lig ? ' · ' + esc(m.lig) : '') + '</div>';
+      } else {
+        var d = new Date(m.tarih);
+        h += '<div class="vs">' + esc(m.ev) + ' – ' + esc(m.dep) + '</div>' +
+          '<div class="info2">' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ' · ' + esc(x.t.brans) + (m.lig ? ' · ' + esc(m.lig) : '') + '</div>' +
+          (x.durum === 'once' ? '<div class="cd" data-geri="' + esc(m.tarih) + '">' + geriSayim(m.tarih) + '</div>' : '');
+      }
+      h += '</div>';
+    });
+    return h + '</div>';
+  }
+
   // Sıradaki bilgi ekranını seç (açık olanlar arasında sırayla döner)
   var ekIdx = 0;
   function aktifEkranlar() {
@@ -589,13 +714,18 @@ input[type=checkbox]{width:24px;height:24px}
     if (cfg.ekHava && wx && wx.days && wx.days.length) a.push('hava');
     if (cfg.ekNot && notlar.length) a.push('not');
     if (cfg.ekHaber && haberler.length) a.push('haber');
+    if (cfg.ekSpor && seciliTakimlar().length) {
+      if (bugunMaclar().length) a.unshift('mac');     // maç günü: önce maç ekranı
+      a.push('spor');
+    }
     return a;
   }
   function siradakiEkran() {
     var a = aktifEkranlar();
     if (!a.length) return false;
     var k = a[ekIdx % a.length]; ekIdx++;
-    showAra(k === 'hava' ? havaHtml() : k === 'not' ? notHtml(false) : k === 'haber' ? haberHtml() : araHtml());
+    showAra(k === 'hava' ? havaHtml() : k === 'not' ? notHtml(false) : k === 'haber' ? haberHtml() :
+      k === 'spor' ? sporHtml() : k === 'mac' ? macHtml() : araHtml());
     return true;
   }
   function showAra(html, sureSn) {
@@ -623,6 +753,8 @@ input[type=checkbox]{width:24px;height:24px}
     var h = el.querySelector('.hh'), m = el.querySelector('.mm2');
     if (h) h.textContent = pad(d.getHours());
     if (m) m.textContent = pad(d.getMinutes());
+    var g = el.querySelectorAll('[data-geri]');
+    for (var i = 0; i < g.length; i++) g[i].textContent = geriSayim(g[i].getAttribute('data-geri'));
   }
 
   // ---------- Gösterim ----------
@@ -969,7 +1101,8 @@ input[type=checkbox]{width:24px;height:24px}
   function openSettings() {
     hideBar();
     setSel('oSure', cfg.sure); setSel('oYerlesim', cfg.yerlesim); setSel('oGecis', cfg.gecis); setSel('oSira', cfg.sira); setSel('oYenile', cfg.yenile); setSel('oAra', cfg.araEkran); setSel('oAraSure', cfg.araSure);
-    $('oEkSaat').checked = cfg.ekSaat; $('oEkHava').checked = cfg.ekHava; $('oEkNot').checked = cfg.ekNot; $('oEkHaber').checked = cfg.ekHaber;
+    $('oEkSaat').checked = cfg.ekSaat; $('oEkHava').checked = cfg.ekHava; $('oEkNot').checked = cfg.ekNot; $('oEkHaber').checked = cfg.ekHaber; $('oEkSpor').checked = cfg.ekSpor;
+    [].forEach.call($('oTakims').querySelectorAll('input'), function (c) { c.checked = (',' + cfg.sporTakim + ',').indexOf(',' + c.value + ',') > -1; });
     [].forEach.call($('oKats').querySelectorAll('input'), function (c) { c.checked = (',' + cfg.haberKat + ',').indexOf(',' + c.value + ',') > -1; });
     $('oVideo').checked = cfg.video; $('oSes').checked = cfg.ses; $('oBilgi').checked = cfg.bilgi;
     $('oSaat').checked = cfg.saat; $('oBulanik').checked = cfg.bulanik;
@@ -994,6 +1127,11 @@ input[type=checkbox]{width:24px;height:24px}
     cfg.haberKat = kk.join(',') || 'spor';
     cfg.ekHaber = $('oEkHaber').checked;
     if (cfg.ekHaber && (katDegisti || !haberler.length)) { haberler = []; fetchNews(); }
+    var tt = [];
+    [].forEach.call($('oTakims').querySelectorAll('input'), function (c) { if (c.checked) tt.push(c.value); });
+    cfg.sporTakim = tt.join(',');
+    cfg.ekSpor = $('oEkSpor').checked;
+    if (cfg.ekSpor && !takimlar.length) fetchSpor();
     cfg.gecis = $('oGecis').value; cfg.sira = $('oSira').value;
     cfg.yenile = +$('oYenile').value; cfg.video = $('oVideo').checked; cfg.ses = $('oSes').checked;
     cfg.bilgi = $('oBilgi').checked; cfg.saat = $('oSaat').checked; cfg.bulanik = $('oBulanik').checked;
@@ -1028,6 +1166,7 @@ input[type=checkbox]{width:24px;height:24px}
     fetchList();
     fetchNotes();
     fetchNews();
+    fetchSpor();
   }
 
   // ---------- Başlat ----------
@@ -1039,6 +1178,8 @@ input[type=checkbox]{width:24px;height:24px}
   setInterval(fetchNotes, 60000);
   fetchNews();
   setInterval(fetchNews, 30 * 60000);
+  fetchSpor();
+  setInterval(fetchSpor, 10 * 60000);
   if (cfg.api) start();
   else { $('setup').className = 'panel show'; document.body.className = ''; }
 
