@@ -44,10 +44,16 @@ body.nocursor{cursor:none}
 @keyframes kb{from{transform:scale(1)}to{transform:scale(1.09)}}
 
 .shadow{text-shadow:0 1px 3px rgba(0,0,0,.7),0 2px 14px rgba(0,0,0,.6)}
-#info{position:fixed;left:32px;bottom:26px;opacity:0;transition:opacity 1s;z-index:3;max-width:60%}
-#info .a{font-size:24px;font-weight:600;letter-spacing:.2px}
-#info .d{font-size:15px;opacity:.85;margin-top:3px}
-#clock{position:fixed;right:32px;bottom:20px;font-size:46px;font-weight:200;z-index:3;letter-spacing:1px}
+#alt{position:fixed;left:0;right:0;bottom:0;height:26vh;z-index:2;pointer-events:none;opacity:0;transition:opacity 1s;
+  background:linear-gradient(to top,rgba(0,0,0,.55),rgba(0,0,0,0))}
+#info{position:fixed;left:4vmin;bottom:3.4vmin;opacity:0;transition:opacity 1s;z-index:3;max-width:62%}
+#info .a{font-weight:600;letter-spacing:.02em;line-height:1.15}
+#info .d{opacity:.9;margin-top:.5vmin}
+#clock{position:fixed;right:4vmin;bottom:2.6vmin;font-weight:200;z-index:3;letter-spacing:.03em;line-height:1}
+/* Alt bilgi boyutu: Küçük / Orta / Büyük */
+body.yb-k #info .a{font-size:3.2vmin} body.yb-k #info .d{font-size:2.2vmin} body.yb-k #clock{font-size:6vmin}
+body.yb-o #info .a{font-size:4.4vmin} body.yb-o #info .d{font-size:3vmin}   body.yb-o #clock{font-size:8.5vmin}
+body.yb-b #info .a{font-size:5.8vmin} body.yb-b #info .d{font-size:3.9vmin} body.yb-b #clock{font-size:11vmin}
 #msg{position:fixed;top:50%;left:50%;-webkit-transform:translate(-50%,-50%);transform:translate(-50%,-50%);
   text-align:center;font-size:18px;line-height:1.5;opacity:.9;max-width:80%;white-space:pre-line;z-index:4;display:none}
 #toast{position:fixed;top:24px;left:50%;-webkit-transform:translateX(-50%);transform:translateX(-50%);
@@ -199,9 +205,10 @@ input[type=checkbox]{width:24px;height:24px}
 .err{color:#ff8a80;font-size:14px;margin-top:8px;min-height:18px}
 </style>
 </head>
-<body class="nocursor">
+<body class="nocursor yb-o">
 
 <div id="stage"></div>
+<div id="alt"></div>
 <div id="info" class="shadow"><div class="a" id="iAlbum"></div><div class="d" id="iDate"></div></div>
 <div id="clock" class="shadow"></div>
 <div id="msg" class="shadow"></div>
@@ -300,6 +307,8 @@ input[type=checkbox]{width:24px;height:24px}
         <option value="8">8 sn</option><option value="10">10 sn</option><option value="15">15 sn</option>
         <option value="20">20 sn</option><option value="30">30 sn</option>
       </select></div>
+    <div class="row"><label for="oYazi">Alt bilgi yazı boyutu</label>
+      <select id="oYazi"><option value="k">Küçük</option><option value="o">Orta</option><option value="b">Büyük</option></select></div>
     <div class="row"><label for="oBilgi">Albüm adı ve tarih</label><input type="checkbox" id="oBilgi"></div>
     <div class="row"><label for="oSaat">Saat göster</label><input type="checkbox" id="oSaat"></div>
     <div class="row"><label for="oBulanik">Bulanık arka plan (Tam sığdır modunda)</label><input type="checkbox" id="oBulanik"></div>
@@ -322,14 +331,17 @@ input[type=checkbox]{width:24px;height:24px}
 (function () {
   'use strict';
 
-  var VERSION = 'v1.8';
+  var VERSION = 'v1.9';
   var KEY = 'cerceve_ayar';
   var DEF = {
     api: '', sure: 10, yerlesim: 'akilli', gecis: 'fade', sira: 'karisik', video: true, ses: false,
-    yenile: 5, araEkran: 8, araSure: 10, ekSaat: true, ekHava: true, ekNot: true, ekHaber: true, ekSpor: true, ekAni: true, sporTakim: 'bjk_futbol,bjk_basket,vakifbank,milli', haberKat: 'spor,bilim,teknoloji,kultur', sehir: 'İstanbul', lat: 41.01, lon: 28.98, bilgi: true, saat: true, bulanik: true, geceBas: '', geceBit: ''
+    yenile: 5, araEkran: 8, araSure: 10, ekSaat: true, ekHava: true, ekNot: true, ekHaber: true, ekSpor: true, ekAni: true, sporTakim: 'bjk_futbol,bjk_basket,vakifbank,milli', haberKat: 'spor,bilim,teknoloji,kultur', sehir: 'İstanbul', lat: 41.01, lon: 28.98, yazi: 'o', bilgi: true, saat: true, bulanik: true, geceBas: '', geceBit: ''
   };
 
   function $(id) { return document.getElementById(id); }
+  function govde(gizliImlec) {
+    document.body.className = (gizliImlec ? 'nocursor ' : '') + 'yb-' + ((typeof cfg !== 'undefined' && cfg && cfg.yazi) || 'o');
+  }
   var stage = $('stage');
 
   // ---------- Ayarlar (localStorage + adres çubuğu #hash yedeği) ----------
@@ -812,7 +824,7 @@ input[type=checkbox]{width:24px;height:24px}
     }
     var box = document.createElement('div'); box.innerHTML = html || araHtml(); slide.appendChild(box.firstChild);
     stage.appendChild(slide);
-    $('info').style.opacity = 0; $('clock').style.display = 'none';
+    $('info').style.opacity = 0; $('alt').style.opacity = 0; $('clock').style.display = 'none';
     var olds = [];
     for (var i = 0; i < stage.children.length; i++) if (stage.children[i] !== slide) olds.push(stage.children[i]);
     void slide.offsetWidth;
@@ -1019,6 +1031,7 @@ input[type=checkbox]{width:24px;height:24px}
 
   function updateInfo(it) {
     var info = $('info');
+    $('alt').style.opacity = (cfg.bilgi || cfg.saat) ? 1 : 0;
     if (!cfg.bilgi) { info.style.opacity = 0; return; }
     $('iAlbum').textContent = it.album || '';
     $('iDate').textContent = it.cekim ? fmtDate(it.cekim) : fmtDate(it.tarih);
@@ -1061,11 +1074,11 @@ input[type=checkbox]{width:24px;height:24px}
   var barT = null;
   function showBar() {
     $('bar').className = 'show';
-    document.body.className = '';
+    govde(false);
     clearTimeout(barT);
     barT = setTimeout(hideBar, 6000);
   }
-  function hideBar() { $('bar').className = ''; document.body.className = 'nocursor'; }
+  function hideBar() { $('bar').className = ''; govde(true); }
   function barVisible() { return $('bar').className === 'show'; }
 
   function togglePause() {
@@ -1166,7 +1179,7 @@ input[type=checkbox]{width:24px;height:24px}
   }
   function openSettings() {
     hideBar();
-    setSel('oSure', cfg.sure); setSel('oYerlesim', cfg.yerlesim); setSel('oGecis', cfg.gecis); setSel('oSira', cfg.sira); setSel('oYenile', cfg.yenile); setSel('oAra', cfg.araEkran); setSel('oAraSure', cfg.araSure);
+    setSel('oSure', cfg.sure); setSel('oYerlesim', cfg.yerlesim); setSel('oYazi', cfg.yazi); setSel('oGecis', cfg.gecis); setSel('oSira', cfg.sira); setSel('oYenile', cfg.yenile); setSel('oAra', cfg.araEkran); setSel('oAraSure', cfg.araSure);
     $('oEkSaat').checked = cfg.ekSaat; $('oEkHava').checked = cfg.ekHava; $('oEkNot').checked = cfg.ekNot; $('oEkHaber').checked = cfg.ekHaber; $('oEkSpor').checked = cfg.ekSpor; $('oEkAni').checked = cfg.ekAni;
     [].forEach.call($('oTakims').querySelectorAll('input'), function (c) { c.checked = (',' + cfg.sporTakim + ',').indexOf(',' + c.value + ',') > -1; });
     [].forEach.call($('oKats').querySelectorAll('input'), function (c) { c.checked = (',' + cfg.haberKat + ',').indexOf(',' + c.value + ',') > -1; });
@@ -1176,14 +1189,14 @@ input[type=checkbox]{width:24px;height:24px}
     $('stat').textContent = items.length ? $('cnt').textContent + ' klasörde' : 'Liste henüz alınmadı';
     $('ver').textContent = 'Çerçeve ' + VERSION;
     $('settings').className = 'panel show';
-    document.body.className = '';
+    govde(false);
   }
-  function closeSettings() { $('settings').className = 'panel'; document.body.className = 'nocursor'; }
+  function closeSettings() { $('settings').className = 'panel'; govde(true); }
 
   $('oCancel').addEventListener('click', closeSettings);
   $('oSave').addEventListener('click', function () {
     var before = { api: cfg.api, video: cfg.video, sira: cfg.sira, yerlesim: cfg.yerlesim, bulanik: cfg.bulanik };
-    cfg.sure = +$('oSure').value; cfg.yerlesim = $('oYerlesim').value;
+    cfg.sure = +$('oSure').value; cfg.yerlesim = $('oYerlesim').value; cfg.yazi = $('oYazi').value;
     cfg.araEkran = +$('oAra').value; cfg.araSure = +$('oAraSure').value;
     cfg.ekSaat = $('oEkSaat').checked; cfg.ekHava = $('oEkHava').checked; cfg.ekNot = $('oEkNot').checked;
     if (cfg.ekNot) fetchNotes();
@@ -1223,7 +1236,7 @@ input[type=checkbox]{width:24px;height:24px}
     var u = $('sApi').value.replace(/^\s+|\s+$/g, '');
     if (!validApi(u)) { $('sErr').textContent = 'Adres https://script.google.com/... ile başlamalı.'; return; }
     cfg.api = u; saveCfg();
-    $('setup').className = 'panel'; document.body.className = 'nocursor';
+    $('setup').className = 'panel'; govde(true);
     goFull(); keepAwake(); firstTouch = false;
     start();
   });
@@ -1237,6 +1250,7 @@ input[type=checkbox]{width:24px;height:24px}
   }
 
   // ---------- Başlat ----------
+  govde(true);
   tick();
   setInterval(tick, 5000);
   fetchWeather();
@@ -1248,7 +1262,7 @@ input[type=checkbox]{width:24px;height:24px}
   fetchSpor();
   setInterval(fetchSpor, 10 * 60000);
   if (cfg.api) start();
-  else { $('setup').className = 'panel show'; document.body.className = ''; }
+  else { $('setup').className = 'panel show'; govde(false); }
 
   // test için dışa aç
   window.__cerceve = { cfg: cfg, state: function () { return { items: items.length, queue: queue.length, current: current && current.id, paused: paused, night: night }; }, next: next, prev: prev, ara: showAra, ekran: siradakiEkran, notlar: fetchNotes };
