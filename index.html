@@ -161,7 +161,8 @@ body.yb-b #info .a{font-size:5.8vmin} body.yb-b #info .d{font-size:3.9vmin} body
 .aniw{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden}
 .aniw .abg{position:absolute;top:-60px;left:-60px;right:-60px;bottom:-60px;background-size:cover;background-position:center;
   -webkit-filter:blur(28px) brightness(.45);filter:blur(28px) brightness(.45)}
-.aniw img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;
+.aniw .aniimg{position:absolute;top:0;left:0;right:0;bottom:0}
+.aniw img,.aniw canvas{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;
   -webkit-animation:kb 14s linear forwards;animation:kb 14s linear forwards}
 .aniw .band{position:absolute;left:0;right:0;bottom:0;padding:9vmin 5vmin 5vmin;
   background:linear-gradient(to top,rgba(0,0,0,.82),rgba(0,0,0,0));text-align:left}
@@ -331,7 +332,7 @@ input[type=checkbox]{width:24px;height:24px}
 (function () {
   'use strict';
 
-  var VERSION = 'v1.9';
+  var VERSION = 'v2.0';
   var KEY = 'cerceve_ayar';
   var DEF = {
     api: '', sure: 10, yerlesim: 'akilli', gecis: 'fade', sira: 'karisik', video: true, ses: false,
@@ -383,38 +384,76 @@ input[type=checkbox]{width:24px;height:24px}
   var cfg = loadCfg();
 
   // ---------- Drive adresleri ----------
-  var W = Math.min(2560, Math.round(Math.max(screen.width, screen.height) * (window.devicePixelRatio || 1))) || 1920;
+  var W = Math.min(1920, Math.round(Math.max(screen.width, screen.height) * (window.devicePixelRatio || 1))) || 1920;
   function thumb(id, w) { return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w' + w; }
   function thumbAlt(id, w) { return 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(id) + '=w' + w; }
   // Drive'ın kendi küçük resmi varsa onu kullan (iPhone yön bilgisi uygulanmış hâli)
   function imgUrl(it, w) { return it && it.th ? it.th + '=s' + w : thumb(it.id, w); }
 
-  // Yön düzeltmeli yükleyici: önce Drive küçük resmi, olmazsa thumbnail + elle döndürme
-  function dondur(img, rot) {
-    rot = ((rot || 0) % 4 + 4) % 4;
-    if (!rot) return img;
-    var w = img.naturalWidth, h = img.naturalHeight, c = document.createElement('canvas');
-    c.width = rot % 2 ? h : w; c.height = rot % 2 ? w : h;
+  // ---- Yön düzeltme ----
+  // Google, iPhone fotoğraflarının yön bilgisini sadece küçük boyutta (≤600 px) uyguluyor; büyük boyut ham geliyor
+  // (ön kamera özçekimleri ayrıca aynalı). Küçük (doğru) görseli büyük (ham) görselin 8 olası dönüş/ayna hâliyle
+  // karşılaştırıp en çok benzeyeni seçiyoruz, sonra büyük görseli o şekilde çeviriyoruz.
+  var YON_KEY = 'cerceve_yon', yonlar = {};
+  try { yonlar = JSON.parse(localStorage.getItem(YON_KEY) || '{}'); } catch (e) {}
+  function yonKaydet(id, d) { yonlar[id] = d; try { localStorage.setItem(YON_KEY, JSON.stringify(yonlar)); } catch (e) {} }
+  function resimYukle(u, cors, cb) {
+    var im = new Image(), bitti = false;
+    var t = setTimeout(function () { if (!bitti) { bitti = true; cb(null); } }, 20000);
+    if (cors) im.crossOrigin = 'anonymous';
+    im.onload = function () { if (bitti) return; bitti = true; clearTimeout(t); cb(im); };
+    im.onerror = function () { if (bitti) return; bitti = true; clearTimeout(t); cb(null); };
+    im.src = u;
+  }
+  function imza(img, r, f, N) {
+    var c = document.createElement('canvas'); c.width = N; c.height = N;
     var x = c.getContext('2d');
-    x.translate(c.width / 2, c.height / 2); x.rotate(rot * Math.PI / 2); x.drawImage(img, -w / 2, -h / 2);
+    x.translate(N / 2, N / 2); x.rotate(r * Math.PI / 2); if (f) x.scale(-1, 1);
+    x.drawImage(img, -N / 2, -N / 2, N, N);
+    return x.getImageData(0, 0, N, N).data;
+  }
+  function enIyiYon(kucuk, buyuk) {
+    var N = 24, ref = imza(kucuk, 0, 0, N), en = { r: 0, f: 0 }, ev = Infinity;
+    for (var f = 0; f < 2; f++) for (var r = 0; r < 4; r++) {
+      var t = imza(buyuk, r, f, N), v = 0;
+      for (var i = 0; i < t.length; i += 4) {
+        var a = t[i] - ref[i], b = t[i + 1] - ref[i + 1], c = t[i + 2] - ref[i + 2];
+        v += a * a + b * b + c * c;
+      }
+      if (v < ev) { ev = v; en = { r: r, f: f }; }
+    }
+    return en;
+  }
+  function uygula(img, d) {
+    if (!d || (!d.r && !d.f)) return img;
+    var w = img.naturalWidth, h = img.naturalHeight, c = document.createElement('canvas');
+    c.width = d.r % 2 ? h : w; c.height = d.r % 2 ? w : h;
+    var x = c.getContext('2d');
+    x.translate(c.width / 2, c.height / 2); x.rotate(d.r * Math.PI / 2); if (d.f) x.scale(-1, 1);
+    x.drawImage(img, -w / 2, -h / 2, w, h);
     return c;
   }
   function oran(el) { return el.tagName === 'CANVAS' ? el.width / el.height : el.naturalWidth / el.naturalHeight; }
   function yukle(it, cb) {
-    var denemeler = [];
-    if (it.th) denemeler.push({ u: it.th + '=s' + W, rot: 0 });
-    denemeler.push({ u: thumb(it.id, W), rot: it.rot || 0 });
-    denemeler.push({ u: thumbAlt(it.id, W), rot: it.rot || 0 });
-    (function dene(i) {
-      if (i >= denemeler.length) return cb(null);
-      var im = new Image(), bitti = false;
-      var t = setTimeout(function () { if (!bitti) { bitti = true; dene(i + 1); } }, 15000);
-      im.onload = function () { if (bitti) return; bitti = true; clearTimeout(t); cb(dondur(im, denemeler[i].rot)); };
-      im.onerror = function () { if (bitti) return; bitti = true; clearTimeout(t); dene(i + 1); };
-      im.src = denemeler[i].u;
-    })(0);
+    if (!it.th) {                                   // Drive küçük resmi yoksa: yönü doğru gelen orta boy
+      return resimYukle(thumb(it.id, 600), false, function (im) {
+        if (im) return cb(im);
+        resimYukle(thumbAlt(it.id, W), false, cb);
+      });
+    }
+    var buyukUrl = it.th + '=s' + W;
+    resimYukle(buyukUrl, true, function (buyuk) {
+      if (!buyuk) {                                 // CORS/ağ sorunu: yönü doğru gelen 600 px'e düş
+        return resimYukle(it.th + '=s600', false, function (im) { cb(im); });
+      }
+      if (yonlar[it.id]) return cb(uygula(buyuk, yonlar[it.id]));
+      resimYukle(it.th + '=s200', true, function (kucuk) {
+        var d = { r: 0, f: 0 };
+        if (kucuk) { try { d = enIyiYon(kucuk, buyuk); yonKaydet(it.id, d); } catch (e) {} }
+        cb(uygula(buyuk, d));
+      });
+    });
   }
-  function videoUrl(id) { return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(id); }
 
   // ---------- Durum ----------
   var items = [], queue = [], hist = [], current = null;
@@ -763,7 +802,7 @@ input[type=checkbox]{width:24px;height:24px}
   }
 
   // ---------- Bu gün, geçmiş yıllarda ----------
-  var aniIdx = 0;
+  var aniIdx = 0, aniBekleyen = null;
   function cekimParca(iso) { return { y: +iso.slice(0, 4), m: +iso.slice(5, 7), d: +iso.slice(8, 10) }; }
   function anilar() {
     var n = new Date(), y = n.getFullYear(), bugun = [], hafta = [];
@@ -781,9 +820,9 @@ input[type=checkbox]{width:24px;height:24px}
     var a = anilar(), it = a.liste[aniIdx % a.liste.length]; aniIdx++;
     var c = cekimParca(it.cekim), yil = new Date().getFullYear() - c.y;
     var tarihYazi = c.d + ' ' + ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'][c.m - 1] + ' ' + c.y;
-    var donus = !it.th && it.rot ? ' style="-webkit-transform:rotate(' + it.rot * 90 + 'deg);transform:rotate(' + it.rot * 90 + 'deg)"' : '';
+    aniBekleyen = it;
     return '<div class="aniw"><div class="abg" style="background-image:url(&quot;' + imgUrl(it, 320) + '&quot;)"></div>' +
-      '<img src="' + imgUrl(it, W) + '" alt=""' + donus + '>' +
+      '<div class="aniimg"></div>' +
       '<div class="band"><div class="b0">📅 ' + (a.bugun ? 'BU GÜN' : 'BU HAFTA') + '</div>' +
       '<div class="b1">' + yil + ' yıl önce ' + (a.bugun ? 'bugün' : 'bu hafta') + '</div>' +
       '<div class="b2">' + tarihYazi + (it.album ? ' · ' + esc(it.album) : '') + '</div></div></div>';
@@ -832,6 +871,13 @@ input[type=checkbox]{width:24px;height:24px}
     setTimeout(function () { olds.forEach(disposeSlide); }, 1450);
     schedule(next, (sureSn || cfg.araSure) * 1000);
     fetchWeather();
+    if (aniBekleyen) {
+      var aIt = aniBekleyen, aMy = seq; aniBekleyen = null;
+      yukle(aIt, function (el) {
+        var kutu = slide.querySelector('.aniimg');
+        if (el && kutu && aMy === seq) kutu.appendChild(el);
+      });
+    }
   }
   function refreshAra() {
     var el = stage.querySelector('.slide.ara.on');
