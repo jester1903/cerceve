@@ -37,7 +37,7 @@ body.nocursor{cursor:none}
 .cell{-webkit-flex:1;flex:1;position:relative;overflow:hidden}
 .pair .cell+.cell{margin-left:6px}
 .pair.col .cell+.cell{margin-left:0;margin-top:6px}
-.cell img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:50% 30%}
+.cell img,.cell canvas{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:50% 30%}
 .kb{-webkit-animation-name:kb;animation-name:kb;-webkit-animation-timing-function:linear;
   animation-timing-function:linear;-webkit-animation-fill-mode:forwards;animation-fill-mode:forwards}
 @-webkit-keyframes kb{from{-webkit-transform:scale(1)}to{-webkit-transform:scale(1.09)}}
@@ -322,7 +322,7 @@ input[type=checkbox]{width:24px;height:24px}
 (function () {
   'use strict';
 
-  var VERSION = 'v1.7';
+  var VERSION = 'v1.8';
   var KEY = 'cerceve_ayar';
   var DEF = {
     api: '', sure: 10, yerlesim: 'akilli', gecis: 'fade', sira: 'karisik', video: true, ses: false,
@@ -374,6 +374,34 @@ input[type=checkbox]{width:24px;height:24px}
   var W = Math.min(2560, Math.round(Math.max(screen.width, screen.height) * (window.devicePixelRatio || 1))) || 1920;
   function thumb(id, w) { return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w' + w; }
   function thumbAlt(id, w) { return 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(id) + '=w' + w; }
+  // Drive'ın kendi küçük resmi varsa onu kullan (iPhone yön bilgisi uygulanmış hâli)
+  function imgUrl(it, w) { return it && it.th ? it.th + '=s' + w : thumb(it.id, w); }
+
+  // Yön düzeltmeli yükleyici: önce Drive küçük resmi, olmazsa thumbnail + elle döndürme
+  function dondur(img, rot) {
+    rot = ((rot || 0) % 4 + 4) % 4;
+    if (!rot) return img;
+    var w = img.naturalWidth, h = img.naturalHeight, c = document.createElement('canvas');
+    c.width = rot % 2 ? h : w; c.height = rot % 2 ? w : h;
+    var x = c.getContext('2d');
+    x.translate(c.width / 2, c.height / 2); x.rotate(rot * Math.PI / 2); x.drawImage(img, -w / 2, -h / 2);
+    return c;
+  }
+  function oran(el) { return el.tagName === 'CANVAS' ? el.width / el.height : el.naturalWidth / el.naturalHeight; }
+  function yukle(it, cb) {
+    var denemeler = [];
+    if (it.th) denemeler.push({ u: it.th + '=s' + W, rot: 0 });
+    denemeler.push({ u: thumb(it.id, W), rot: it.rot || 0 });
+    denemeler.push({ u: thumbAlt(it.id, W), rot: it.rot || 0 });
+    (function dene(i) {
+      if (i >= denemeler.length) return cb(null);
+      var im = new Image(), bitti = false;
+      var t = setTimeout(function () { if (!bitti) { bitti = true; dene(i + 1); } }, 15000);
+      im.onload = function () { if (bitti) return; bitti = true; clearTimeout(t); cb(dondur(im, denemeler[i].rot)); };
+      im.onerror = function () { if (bitti) return; bitti = true; clearTimeout(t); dene(i + 1); };
+      im.src = denemeler[i].u;
+    })(0);
+  }
   function videoUrl(id) { return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(id); }
 
   // ---------- Durum ----------
@@ -418,8 +446,10 @@ input[type=checkbox]{width:24px;height:24px}
         list.forEach(function (it) { now[it.id] = 1; });
         var fresh = had ? list.filter(function (it) { return !old[it.id]; }) : [];
         items = list;
-        queue = queue.filter(function (it) { return now[it.id]; });
-        hist = hist.filter(function (it) { return now[it.id]; });
+        var byId = {};
+        list.forEach(function (it) { byId[it.id] = it; });
+        queue = queue.filter(function (it) { return now[it.id]; }).map(function (it) { return byId[it.id]; });
+        hist = hist.filter(function (it) { return now[it.id]; }).map(function (it) { return byId[it.id]; });
         if (fresh.length) {
           fresh.sort(byDate(true));
           queue = fresh.concat(queue);           // yeni gelenler sıradaki ilk görseller olur
@@ -739,8 +769,9 @@ input[type=checkbox]{width:24px;height:24px}
     var a = anilar(), it = a.liste[aniIdx % a.liste.length]; aniIdx++;
     var c = cekimParca(it.cekim), yil = new Date().getFullYear() - c.y;
     var tarihYazi = c.d + ' ' + ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'][c.m - 1] + ' ' + c.y;
-    return '<div class="aniw"><div class="abg" style="background-image:url(&quot;' + thumb(it.id, 320) + '&quot;)"></div>' +
-      '<img src="' + thumb(it.id, W) + '" alt="">' +
+    var donus = !it.th && it.rot ? ' style="-webkit-transform:rotate(' + it.rot * 90 + 'deg);transform:rotate(' + it.rot * 90 + 'deg)"' : '';
+    return '<div class="aniw"><div class="abg" style="background-image:url(&quot;' + imgUrl(it, 320) + '&quot;)"></div>' +
+      '<img src="' + imgUrl(it, W) + '" alt=""' + donus + '>' +
       '<div class="band"><div class="b0">📅 ' + (a.bugun ? 'BU GÜN' : 'BU HAFTA') + '</div>' +
       '<div class="b1">' + yil + ' yıl önce ' + (a.bugun ? 'bugün' : 'bu hafta') + '</div>' +
       '<div class="b2">' + tarihYazi + (it.album ? ' · ' + esc(it.album) : '') + '</div></div></div>';
@@ -846,7 +877,7 @@ input[type=checkbox]{width:24px;height:24px}
     if (!cfg.bulanik) return;
     var bg = document.createElement('div');
     bg.className = 'bg';
-    bg.style.backgroundImage = 'url("' + thumb(it.id, 320) + '")';
+    bg.style.backgroundImage = 'url("' + imgUrl(it, 320) + '")';
     slide.insertBefore(bg, slide.firstChild);
   }
   function styleSingle(el, mode, secs) {
@@ -858,12 +889,7 @@ input[type=checkbox]{width:24px;height:24px}
     }
   }
   function loadImg(q, cb) {
-    var im = new Image(), fin = false;
-    var t = setTimeout(function () { end(null); }, 10000);
-    function end(x) { if (fin) return; fin = true; clearTimeout(t); cb(x); }
-    im.onload = function () { dims[q.id] = im.naturalWidth / im.naturalHeight; end(im); };
-    im.onerror = function () { end(null); };
-    im.src = thumb(q.id, W);
+    yukle(q, function (el) { if (el) dims[q.id] = oran(el); cb(el); });
   }
   // Aynı yöndeki (ör. ikinci dikey) bir eş fotoğraf bul
   function findPartner(it, cb) {
@@ -941,10 +967,10 @@ input[type=checkbox]{width:24px;height:24px}
       });
       timer = setTimeout(fail, 45000);       // 45 sn içinde başlamazsa atla
     } else {
-      var img = new Image(), tried = false;
-      img.onload = function () {
+      yukle(it, function (img) {
         if (my !== seq || done) return;
-        var r = img.naturalWidth / img.naturalHeight;
+        if (!img) return fail();
+        var r = oran(img);
         dims[it.id] = r;
         var mode = layoutFor(r, false);
         function single(m) {
@@ -968,12 +994,8 @@ input[type=checkbox]{width:24px;height:24px}
           slide.appendChild(box);
           ok(); schedule(next, cfg.sure * 1000);
         });
-      };
-      img.onerror = function () {
-        if (!tried) { tried = true; img.src = thumbAlt(it.id, W); } else fail();
-      };
-      img.src = thumb(it.id, W);
-      timer = setTimeout(fail, 40000);
+      });
+      timer = setTimeout(fail, 50000);
     }
   }
 
