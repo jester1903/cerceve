@@ -89,12 +89,15 @@ body.yb-b #info .a{font-size:5.8vmin} body.yb-b #info .d{font-size:3.9vmin} body
 .hv .now .t{display:inline-block;vertical-align:middle;text-align:left}
 .hv .now .deg{font-size:16vmin;font-weight:300;line-height:1}
 .hv .now .desc{font-size:4vmin;margin-top:1vmin}
+.hv .now .lbl{font-size:2.8vmin;letter-spacing:.16em;text-transform:uppercase;opacity:.6;margin-bottom:.4vmin}
+.hv .now .later{font-size:3vmin;color:#9fd2ff;margin-top:1vmin}
 .hv .now .mm{font-size:3.1vmin;opacity:.75;margin-top:.6vmin}
 .hv .head{font-size:3.2vmin;opacity:.65;letter-spacing:.15em;text-transform:uppercase;margin-bottom:2.5vmin}
 .hv .days{margin-top:4.5vmin;white-space:nowrap}
 .hv .day{display:inline-block;width:15vmin;margin:0 1vmin;padding:2vmin 0;border-radius:2.4vmin;background:rgba(255,255,255,.09);vertical-align:top}
 .hv .day.today{background:rgba(255,255,255,.18)}
 .hv .day .n{font-size:3vmin;font-weight:600}
+.hv .day .gg{font-size:1.9vmin;opacity:.6;margin-top:.2vmin}
 .hv .day svg{width:9vmin;height:9vmin;margin:1vmin 0}
 .hv .day .x{font-size:3.2vmin}
 .hv .day .x span{opacity:.6}
@@ -332,7 +335,7 @@ input[type=checkbox]{width:24px;height:24px}
 (function () {
   'use strict';
 
-  var VERSION = 'v2.0';
+  var VERSION = 'v2.0.1';
   var KEY = 'cerceve_ayar';
   var DEF = {
     api: '', sure: 10, yerlesim: 'akilli', gecis: 'fade', sira: 'karisik', video: true, ses: false,
@@ -625,15 +628,22 @@ input[type=checkbox]{width:24px;height:24px}
   }
   var KISA = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
   function havaHtml() {
+    // Şu an kuru ama gün içinde yağış/kar bekleniyorsa bunu açıkça yaz
+    var bugunK = wx.days[0] ? wxKind(wx.days[0].code) : '', simdiK = wxKind(wx.code);
+    var ileride = '';
+    if (/rain|storm|snow/.test(bugunK) && bugunK !== simdiK) {
+      ileride = '<div class="later">' + (bugunK === 'snow' ? '❄️ Gün içinde kar' : bugunK === 'storm' ? '⛈️ Gün içinde sağanak' : '🌧️ Gün içinde yağmur') +
+        ' bekleniyor' + (wx.days[0].pop != null ? ' (%' + wx.days[0].pop + ')' : '') + '</div>';
+    }
     var h = '<div class="wrap hv"><div class="head">' + cfg.sehir + ' · Hava durumu</div>' +
-      '<div class="now">' + wxIcon(wxKind(wx.code), wx.day) +
-      '<div class="t"><div class="deg">' + wx.t + '°</div><div class="desc">' + wxDesc(wx.code) + '</div>' +
+      '<div class="now">' + wxIcon(simdiK, wx.day) +
+      '<div class="t"><div class="lbl">Şu an</div><div class="deg">' + wx.t + '°</div><div class="desc">' + wxDesc(wx.code) + '</div>' +
       (wx.max !== null ? '<div class="mm">En yüksek ' + wx.max + '° · En düşük ' + wx.min + '°</div>' : '') +
-      '</div></div><div class="days">';
+      ileride + '</div></div><div class="days">';
     wx.days.forEach(function (d, i) {
       var p = d.date.split('-'), dt = new Date(+p[0], +p[1] - 1, +p[2]);
       var n = i === 0 ? 'Bugün' : i === 1 ? 'Yarın' : KISA[dt.getDay()];
-      h += '<div class="day' + (i === 0 ? ' today' : '') + '"><div class="n">' + n + '</div>' +
+      h += '<div class="day' + (i === 0 ? ' today' : '') + '"><div class="n">' + n + '</div>' + '<div class="gg">' + (i === 0 ? 'gün geneli' : '&nbsp;') + '</div>' +
         wxIcon(wxKind(d.code), true) +
         '<div class="x">' + d.max + '° <span>' + d.min + '°</span></div>' +
         '<div class="p">' + (d.pop !== null && d.pop >= 20 ? '💧 %' + d.pop : '') + '</div></div>';
