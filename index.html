@@ -151,6 +151,19 @@ body.nocursor{cursor:none}
 .mg .m + .m{margin-top:5vmin;padding-top:4vmin;border-top:1px solid rgba(255,255,255,.15)}
 .mg.two .ik{font-size:7vmin}.mg.two .vs{font-size:4.8vmin}.mg.two .sc{font-size:8vmin}.mg.two .cd{font-size:3.8vmin}
 
+/* Bu gün, geçmiş yıllarda */
+.aniw{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden}
+.aniw .abg{position:absolute;top:-60px;left:-60px;right:-60px;bottom:-60px;background-size:cover;background-position:center;
+  -webkit-filter:blur(28px) brightness(.45);filter:blur(28px) brightness(.45)}
+.aniw img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;
+  -webkit-animation:kb 14s linear forwards;animation:kb 14s linear forwards}
+.aniw .band{position:absolute;left:0;right:0;bottom:0;padding:9vmin 5vmin 5vmin;
+  background:linear-gradient(to top,rgba(0,0,0,.82),rgba(0,0,0,0));text-align:left}
+.aniw .b0{display:inline-block;font-size:2.8vmin;font-weight:700;letter-spacing:.18em;background:#e8c26a;color:#1b1406;
+  padding:.8vmin 2.2vmin;border-radius:3vmin}
+.aniw .b1{font-size:7vmin;font-weight:600;margin-top:1.6vmin;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.aniw .b2{font-size:3.2vmin;opacity:.8;margin-top:.6vmin}
+
 #bar{position:fixed;left:0;right:0;bottom:0;padding:22px 0 26px;text-align:center;z-index:8;
   background:linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,0));opacity:0;pointer-events:none;transition:opacity .4s}
 #bar.show{opacity:1;pointer-events:auto}
@@ -281,6 +294,7 @@ input[type=checkbox]{width:24px;height:24px}
       <label><input type="checkbox" value="vakifbank"> VakıfBank</label>
       <label><input type="checkbox" value="milli"> Milli Takım</label>
     </div>
+    <div class="row"><label for="oEkAni">· Bu gün, geçmiş yıllarda</label><input type="checkbox" id="oEkAni"></div>
     <div class="row"><label for="oAraSure">Bilgi ekranı süresi</label>
       <select id="oAraSure">
         <option value="8">8 sn</option><option value="10">10 sn</option><option value="15">15 sn</option>
@@ -308,11 +322,11 @@ input[type=checkbox]{width:24px;height:24px}
 (function () {
   'use strict';
 
-  var VERSION = 'v1.6.1';
+  var VERSION = 'v1.7';
   var KEY = 'cerceve_ayar';
   var DEF = {
     api: '', sure: 10, yerlesim: 'akilli', gecis: 'fade', sira: 'karisik', video: true, ses: false,
-    yenile: 5, araEkran: 8, araSure: 10, ekSaat: true, ekHava: true, ekNot: true, ekHaber: true, ekSpor: true, sporTakim: 'bjk_futbol,bjk_basket,vakifbank,milli', haberKat: 'spor,bilim,teknoloji,kultur', sehir: 'İstanbul', lat: 41.01, lon: 28.98, bilgi: true, saat: true, bulanik: true, geceBas: '', geceBit: ''
+    yenile: 5, araEkran: 8, araSure: 10, ekSaat: true, ekHava: true, ekNot: true, ekHaber: true, ekSpor: true, ekAni: true, sporTakim: 'bjk_futbol,bjk_basket,vakifbank,milli', haberKat: 'spor,bilim,teknoloji,kultur', sehir: 'İstanbul', lat: 41.01, lon: 28.98, bilgi: true, saat: true, bulanik: true, geceBas: '', geceBit: ''
   };
 
   function $(id) { return document.getElementById(id); }
@@ -706,6 +720,32 @@ input[type=checkbox]{width:24px;height:24px}
     return h + '</div>';
   }
 
+  // ---------- Bu gün, geçmiş yıllarda ----------
+  var aniIdx = 0;
+  function cekimParca(iso) { return { y: +iso.slice(0, 4), m: +iso.slice(5, 7), d: +iso.slice(8, 10) }; }
+  function anilar() {
+    var n = new Date(), y = n.getFullYear(), bugun = [], hafta = [];
+    items.forEach(function (it) {
+      if (it.tur !== 'image' || !it.cekim) return;
+      var c = cekimParca(it.cekim);
+      if (c.y >= y) return;
+      if (c.m === n.getMonth() + 1 && c.d === n.getDate()) { bugun.push(it); return; }
+      var ayni = new Date(y, c.m - 1, c.d), fark = Math.abs((ayni - new Date(y, n.getMonth(), n.getDate())) / 86400000);
+      if (fark <= 3) hafta.push(it);
+    });
+    return { liste: bugun.length ? bugun : hafta, bugun: bugun.length > 0 };
+  }
+  function aniHtml() {
+    var a = anilar(), it = a.liste[aniIdx % a.liste.length]; aniIdx++;
+    var c = cekimParca(it.cekim), yil = new Date().getFullYear() - c.y;
+    var tarihYazi = c.d + ' ' + ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'][c.m - 1] + ' ' + c.y;
+    return '<div class="aniw"><div class="abg" style="background-image:url(&quot;' + thumb(it.id, 320) + '&quot;)"></div>' +
+      '<img src="' + thumb(it.id, W) + '" alt="">' +
+      '<div class="band"><div class="b0">📅 ' + (a.bugun ? 'BU GÜN' : 'BU HAFTA') + '</div>' +
+      '<div class="b1">' + yil + ' yıl önce ' + (a.bugun ? 'bugün' : 'bu hafta') + '</div>' +
+      '<div class="b2">' + tarihYazi + (it.album ? ' · ' + esc(it.album) : '') + '</div></div></div>';
+  }
+
   // Sıradaki bilgi ekranını seç (açık olanlar arasında sırayla döner)
   var ekIdx = 0;
   function aktifEkranlar() {
@@ -714,6 +754,7 @@ input[type=checkbox]{width:24px;height:24px}
     if (cfg.ekHava && wx && wx.days && wx.days.length) a.push('hava');
     if (cfg.ekNot && notlar.length) a.push('not');
     if (cfg.ekHaber && haberler.length) a.push('haber');
+    if (cfg.ekAni && anilar().liste.length) a.splice(1, 0, 'ani');
     if (cfg.ekSpor && seciliTakimlar().length) {
       if (bugunMaclar().length) a.unshift('mac');     // maç günü: önce maç ekranı
       a.push('spor');
@@ -725,16 +766,19 @@ input[type=checkbox]{width:24px;height:24px}
     if (!a.length) return false;
     var k = a[ekIdx % a.length]; ekIdx++;
     showAra(k === 'hava' ? havaHtml() : k === 'not' ? notHtml(false) : k === 'haber' ? haberHtml() :
-      k === 'spor' ? sporHtml() : k === 'mac' ? macHtml() : araHtml());
+      k === 'spor' ? sporHtml() : k === 'mac' ? macHtml() : k === 'ani' ? aniHtml() : araHtml(),
+      k === 'ani' ? Math.max(cfg.araSure, 12) : 0, k === 'ani');
     return true;
   }
-  function showAra(html, sureSn) {
+  function showAra(html, sureSn, sade) {
     clearTimeout(timer); timer = null;
     ++seq; onAra = true;
     var slide = document.createElement('div');
     slide.className = 'slide ara';
-    if (current && current.tur === 'image') addBg(slide, current);
-    var sh = document.createElement('div'); sh.className = 'shade'; slide.appendChild(sh);
+    if (!sade) {
+      if (current && current.tur === 'image') addBg(slide, current);
+      var sh = document.createElement('div'); sh.className = 'shade'; slide.appendChild(sh);
+    }
     var box = document.createElement('div'); box.innerHTML = html || araHtml(); slide.appendChild(box.firstChild);
     stage.appendChild(slide);
     $('info').style.opacity = 0; $('clock').style.display = 'none';
@@ -955,7 +999,7 @@ input[type=checkbox]{width:24px;height:24px}
     var info = $('info');
     if (!cfg.bilgi) { info.style.opacity = 0; return; }
     $('iAlbum').textContent = it.album || '';
-    $('iDate').textContent = fmtDate(it.tarih);
+    $('iDate').textContent = it.cekim ? fmtDate(it.cekim) : fmtDate(it.tarih);
     info.style.opacity = 1;
   }
 
@@ -1101,7 +1145,7 @@ input[type=checkbox]{width:24px;height:24px}
   function openSettings() {
     hideBar();
     setSel('oSure', cfg.sure); setSel('oYerlesim', cfg.yerlesim); setSel('oGecis', cfg.gecis); setSel('oSira', cfg.sira); setSel('oYenile', cfg.yenile); setSel('oAra', cfg.araEkran); setSel('oAraSure', cfg.araSure);
-    $('oEkSaat').checked = cfg.ekSaat; $('oEkHava').checked = cfg.ekHava; $('oEkNot').checked = cfg.ekNot; $('oEkHaber').checked = cfg.ekHaber; $('oEkSpor').checked = cfg.ekSpor;
+    $('oEkSaat').checked = cfg.ekSaat; $('oEkHava').checked = cfg.ekHava; $('oEkNot').checked = cfg.ekNot; $('oEkHaber').checked = cfg.ekHaber; $('oEkSpor').checked = cfg.ekSpor; $('oEkAni').checked = cfg.ekAni;
     [].forEach.call($('oTakims').querySelectorAll('input'), function (c) { c.checked = (',' + cfg.sporTakim + ',').indexOf(',' + c.value + ',') > -1; });
     [].forEach.call($('oKats').querySelectorAll('input'), function (c) { c.checked = (',' + cfg.haberKat + ',').indexOf(',' + c.value + ',') > -1; });
     $('oVideo').checked = cfg.video; $('oSes').checked = cfg.ses; $('oBilgi').checked = cfg.bilgi;
@@ -1131,6 +1175,7 @@ input[type=checkbox]{width:24px;height:24px}
     [].forEach.call($('oTakims').querySelectorAll('input'), function (c) { if (c.checked) tt.push(c.value); });
     cfg.sporTakim = tt.join(',');
     cfg.ekSpor = $('oEkSpor').checked;
+    cfg.ekAni = $('oEkAni').checked;
     if (cfg.ekSpor && !takimlar.length) fetchSpor();
     cfg.gecis = $('oGecis').value; cfg.sira = $('oSira').value;
     cfg.yenile = +$('oYenile').value; cfg.video = $('oVideo').checked; cfg.ses = $('oSes').checked;
